@@ -4,6 +4,10 @@
 
 | Thread | Detail |
 |--------|--------|
+| **Old Teleprompter repo kept private** | `JHenriquesss/Teleprompter` is private archive, not deleted. Contains rewritten history. Can be deleted after confirming migration is complete |
+| **4 PR refs require GitHub Support** | `refs/pull/1/head` through `refs/pull/4/head` in old repo still reference pre-filter-repo commits. Cannot force-push from client. Need GitHub Support to purge |
+| **Public repo now at OpenTeleprompter** | `JHenriquesss/OpenTeleprompter` is the new public home. Clean history, single commit, no old tags/PRs/releases |
+| **Safe screenshots not yet regenerated** | Use synthetic demo content only. Blocked by `docs/screenshot-safety.md` checklist requirement |
 | **wasm-bindgen-cli network dep** | trunk downloads wasm-bindgen CLI from GitHub on first build. 504 timeout when GitHub under load. Pre-install via `cargo install wasm-bindgen-cli --version 0.2.122` as workaround |
 | **Non-ASCII Windows paths** | Cross-platform paths with Unicode break trunk's `canonicalize()` in watch-ignore scanning. Keep `Trunk.toml` watch.ignore empty |
 | **Tray icon** | No system tray in current scope |
@@ -16,7 +20,7 @@
 
 | Thread | Detail |
 |--------|--------|
-| **Screenshots freshness** | Regenerate screenshots with synthetic demo content before next public release. |
+| **Screenshots freshness** | Regenerate screenshots with synthetic demo content before next public release. Deferred — no UI changes since Phase 5. Use `docs/screenshot-safety.md` checklist when doing so. |
 
 ## Phase 7/7.1 carry-overs
 

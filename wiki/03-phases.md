@@ -632,3 +632,42 @@ Goal: Replace inline error banners with a reusable toast system, centralize all 
 - Jump feedback replaced with toasts for consistency: `toast.add_info("+5s")`. Old signal/effect/display div removed (52 lines).
 - Speed error kept as inline tooltip (form validation UX — toast would be too disruptive near input).
 - Toasts positioned bottom-right (avoids prompter reading line). `pointer-events: none` on container, `auto` on toast cards.
+
+## Post-Phase-10: Privacy incident + repo migration (2026-06-07)
+
+Status: **contained**
+
+### What happened
+
+Screenshots in `docs/screenshots/` contained personal/private information and were accidentally committed and published (Phase 5, 4 PNG files).
+
+### Containment actions
+
+- Repo made PRIVATE immediately
+- CI + release workflows disabled
+- `docs/screenshots/prompter-mode.png` removed from current tree
+- All text references sanitized (README, wiki)
+- Git history rewritten: `git filter-repo --invert-paths --path docs/screenshots/` — 49 commits rewritten
+- Cleaned history force-pushed (all branches, all tags)
+- 12 affected releases deleted (v0.5.0-phase5 through v0.10.0-phase10)
+- 49 workflow runs deleted
+- Fresh clone verification: clean
+
+### Migration to public OpenTeleprompter
+
+After containment, created a new clean public repository:
+
+1. Clean export via robocopy (excluded .git, target, dist, databases)
+2. Removed incident docs (privacy-incident-status.md, github-support-privacy-request.md)
+3. Removed sessions, .dv-state.json
+4. Sanitized wiki references → no incident language
+5. Validated: fmt ✓ check ✓ 18 backend tests ✓ clippy ✓ trunk build ✓ 42 WASM tests ✓ check.ps1 ✓
+6. Init fresh git → commit → push to `JHenriquesss/OpenTeleprompter` (public)
+7. Added `docs/screenshot-safety.md`
+8. Old `Teleprompter` repo kept private for archive — not deleted
+
+### Remaining
+
+- 4 PR refs (`refs/pull/1-4/head`) in old repo still reference old commits — require GitHub Support to purge
+- Third-party clones/forks may exist (repo was public before containment)
+- Safe screenshots with synthetic demo content: deferred until needed for next public release

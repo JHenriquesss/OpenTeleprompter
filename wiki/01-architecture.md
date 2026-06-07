@@ -14,7 +14,7 @@
 ## Project layout
 
 ```
-teleprompter/
+OpenTeleprompter/
 ├── src/                     Leptos frontend (compiled to WASM)
 ├── src-tauri/               Rust backend (native binary)
 ├── src-tauri/tests/         Integration tests (backend)
@@ -233,3 +233,14 @@ Handled in `PrompterView` via `window.add_event_listener("keydown")`. A single `
 Custom speed input (Phase 9): text field in floating controls, validates input, clamps 0.25×–5.0×, shows friendly error. [[src/prompter/speed.rs]]
 
 Speed presets (Phase 8): 0.5×, 1×, 1.5×, 2×, 3× buttons in floating controls.
+
+## Repository split
+
+Two repos after privacy incident (2026-06-07):
+
+| Repo | Visibility | Purpose |
+|------|-----------|---------|
+| `JHenriquesss/Teleprompter` | PRIVATE | Archived. History rewritten (git-filter-repo) to remove docs/screenshots/. 4 PR refs still on GitHub — pending Support purge |
+| `JHenriquesss/OpenTeleprompter` | PUBLIC | Active development. Fresh single commit (no old history, tags, PRs, releases). Clean export + validation before push |
+
+**Migration method:** `robocopy` source (excluding .git, target, dist, src-tauri/target, *.db, *.sqlite), sanitized references, re-initialized git, pushed to new public repo. Old repo kept private for archive access.
