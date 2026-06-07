@@ -145,10 +145,10 @@ git tag -a v0.7.0-beta.1 -m "OpenPrompter RS v0.7.0 beta 1 — cross-platform pa
 git push origin v0.7.0-beta.1
 
 # 4. Monitor the release workflow
-#    https://github.com/JHenriquesss/Teleprompter/actions/workflows/release.yml
+#    https://github.com/JHenriquesss/OpenTeleprompter/actions/workflows/release.yml
 
 # 5. Once complete, artifacts appear on the GitHub Release page
-#    https://github.com/JHenriquesss/Teleprompter/releases/tag/v0.7.0-beta.1
+#    https://github.com/JHenriquesss/OpenTeleprompter/releases/tag/v0.7.0-beta.1
 ```
 ---
 
