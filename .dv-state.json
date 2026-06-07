@@ -1,0 +1,41 @@
+{
+  "phase": 12,
+  "phase_name": "import-export-error-path-component-tests",
+  "step": "ready-to-close",
+  "must_exist": [
+    { "id": "me-1", "text": "MockApi fail_on(command) targeted failure", "done": true },
+    { "id": "me-2", "text": "MockApi call_count + was_not_called helpers", "done": true },
+    { "id": "me-3", "text": "MockApi records export calls: exported() -> Vec<(id, path)>", "done": true },
+    { "id": "me-4", "text": "MockApi scripts() snapshot accessor", "done": true },
+    { "id": "me-5", "text": "ToastState::snapshot() read-only clone", "done": true },
+    { "id": "me-6", "text": "Test helpers: click_by_title, click_by_aria, click_text, assert_toast_contains_success/error, assert_no_error_toast", "done": true },
+    { "id": "me-7", "text": "ConfirmModal aria-label on confirm + cancel buttons", "done": true },
+    { "id": "me-8", "text": "Test: import success (assert title+body, success toast, called once)", "done": true },
+    { "id": "me-9", "text": "Test: export success (assert correct id exported, success toast)", "done": true },
+    { "id": "me-10", "text": "Test: duplicate (count+1, success toast)", "done": true },
+    { "id": "me-11", "text": "Test: delete-confirm full sequence (not called pre-confirm, once post, row gone, toast)", "done": true },
+    { "id": "me-12", "text": "Test: delete cancel (was_not_called delete_script, row retained, no error toast)", "done": true },
+    { "id": "me-13", "text": "Test: import cancel (None dialog -> import not called, no error toast)", "done": true },
+    { "id": "me-14", "text": "Test: import failure (fail_on import_script_from_txt -> error toast, count unchanged)", "done": true },
+    { "id": "me-15", "text": "Test: export cancel (None dialog -> export not called, no error toast)", "done": true },
+    { "id": "me-16", "text": "Test: delete failure (fail_on delete_script -> error toast, row retained)", "done": true },
+    { "id": "me-17", "text": "docs/frontend-testing.md + wiki/02-test-tree.md updated with new tests + counts", "done": true }
+  ],
+  "must_not_exist": [
+    { "id": "mne-1", "text": "no real Tauri invoke or native OS dialog in tests", "violated": false },
+    { "id": "mne-2", "text": "no global failing() where flow calls multiple commands before target failure (use fail_on)", "violated": false },
+    { "id": "mne-3", "text": "no fixed sleep for assertions beyond bounded tick/settle; no wall-clock toast-dismiss dependence", "violated": false },
+    { "id": "mne-4", "text": "MockApi stays #[cfg(test)]; no test-only type in prod bundle", "violated": false },
+    { "id": "mne-5", "text": "no production logic changed to pass tests (only additive ToastState::snapshot + ConfirmModal aria-labels)", "violated": false },
+    { "id": "mne-6", "text": "no CI step weakened; no new gated fmt/clippy failures", "violated": false }
+  ],
+  "current_item": null,
+  "trunk_status": "green",
+  "trunk_evidence": "Phase 12: 18 backend + 61 WASM tests (9 new ScriptLibrary action-flow component tests), fmt + backend clippy + trunk build green. cargo tauri build pending on merge.",
+  "opened_at": "2026-06-07",
+  "last_tune_at": null,
+  "history": [
+    { "phase": 11, "closed_at": "2026-06-07", "outcome": "ok", "tag": "v0.11.0-phase11" }
+  ],
+  "close_ready": true
+}

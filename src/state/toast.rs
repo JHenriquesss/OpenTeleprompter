@@ -55,6 +55,11 @@ impl ToastState {
         }
     }
 
+    /// Read-only clone of the current toast messages (for tests/inspection).
+    pub fn snapshot(&self) -> Vec<ToastMessage> {
+        self.messages.get_untracked()
+    }
+
     pub fn add_success(&self, msg: &str) {
         self.add(msg, ToastLevel::Success);
     }

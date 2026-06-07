@@ -40,8 +40,12 @@ struct MockState {
     next_id: u32,
     /// When set, every command returns `Err(msg)` — for error-path tests.
     force_error: Option<String>,
+    /// Specific command names that should fail (targeted error injection).
+    fail_commands: Vec<String>,
     /// Method names invoked, in order, for assertions.
     call_log: Vec<String>,
+    /// `(script_id, path)` recorded for each successful export.
+    exports: Vec<(String, String)>,
 }
 
 pub struct MockApi {
@@ -67,7 +71,9 @@ impl MockApi {
                 version: "0.10.0".to_string(),
                 next_id: 1,
                 force_error: None,
+                fail_commands: Vec::new(),
                 call_log: Vec::new(),
+                exports: Vec::new(),
             }),
         }
     }
@@ -119,6 +125,17 @@ impl MockApi {
         self
     }
 
+    /// Fail only the named command, leaving every other command working.
+    /// Use this for flows that call several commands before the one under test
+    /// (e.g. import = open_file_dialog → read_text_file → import_script_from_txt).
+    pub fn fail_on(self, command: &str) -> Self {
+        self.inner
+            .borrow_mut()
+            .fail_commands
+            .push(command.to_string());
+        self
+    }
+
     // ---- introspection --------------------------------------------------
 
     pub fn call_log(&self) -> Vec<String> {
@@ -129,8 +146,31 @@ impl MockApi {
         self.inner.borrow().call_log.iter().any(|m| m == method)
     }
 
+    pub fn was_not_called(&self, method: &str) -> bool {
+        !self.was_called(method)
+    }
+
+    pub fn call_count(&self, method: &str) -> usize {
+        self.inner
+            .borrow()
+            .call_log
+            .iter()
+            .filter(|m| *m == method)
+            .count()
+    }
+
     pub fn script_count(&self) -> usize {
         self.inner.borrow().scripts.len()
+    }
+
+    /// Snapshot of the current scripts (for asserting imported title/content).
+    pub fn scripts(&self) -> Vec<ScriptData> {
+        self.inner.borrow().scripts.clone()
+    }
+
+    /// `(script_id, path)` recorded for each successful export.
+    pub fn exported(&self) -> Vec<(String, String)> {
+        self.inner.borrow().exports.clone()
     }
 
     pub fn current_settings(&self) -> AppSettingsData {
@@ -147,11 +187,20 @@ impl MockApi {
         self.inner.borrow_mut().call_log.push(method.to_string());
     }
 
+    /// Returns `Err` if a global failure is set, or if the most-recently-logged
+    /// command (the caller) is in the targeted `fail_commands` list. Relies on
+    /// every command calling `log()` immediately before `check_error()`.
     fn check_error(&self) -> Result<(), String> {
-        match &self.inner.borrow().force_error {
-            Some(msg) => Err(msg.clone()),
-            None => Ok(()),
+        let s = self.inner.borrow();
+        if let Some(msg) = &s.force_error {
+            return Err(msg.clone());
         }
+        if let Some(cmd) = s.call_log.last() {
+            if s.fail_commands.iter().any(|c| c == cmd) {
+                return Err(format!("mock failure: {cmd}"));
+            }
+        }
+        Ok(())
     }
 
     fn make_script(&self, title: &str, content: &str) -> ScriptData {
@@ -294,9 +343,13 @@ impl AppApi for MockApi {
         Ok(self.inner.borrow().files.get(path).cloned())
     }
 
-    async fn export_script_to_txt_file(&self, _id: &str, _path: &str) -> Result<(), String> {
+    async fn export_script_to_txt_file(&self, id: &str, path: &str) -> Result<(), String> {
         self.log("export_script_to_txt_file");
         self.check_error()?;
+        self.inner
+            .borrow_mut()
+            .exports
+            .push((id.to_string(), path.to_string()));
         Ok(())
     }
 

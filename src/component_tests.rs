@@ -32,7 +32,7 @@ use crate::components::script_library::ScriptLibrary;
 use crate::components::settings_panel::SettingsPanel;
 use crate::state::app_state::AppState;
 use crate::state::playback_state::PlaybackState;
-use crate::state::toast::ToastState;
+use crate::state::toast::{ToastLevel, ToastState};
 use crate::state::ui_state::UiState;
 
 // ---- helpers -----------------------------------------------------------
@@ -281,4 +281,320 @@ async fn prompter_view_shows_resume_dialog_when_state_exists() {
         "resume dialog missing: {}",
         text_of(&container)
     );
+}
+
+// ---- Phase 12: import/export/duplicate/delete flows ---------------------
+//
+// These exercise the real ScriptLibrary action handlers by dispatching DOM
+// clicks on the rendered buttons, driven by MockApi. They reference test
+// support that does not exist yet (RED): MockApi::fail_on / call_count /
+// was_not_called / exported / scripts, ToastState::snapshot, and the
+// ConfirmModal aria-labels. Implementation lands in the green step.
+
+/// Mount `<ScriptLibrary>` with the given mock API and toast state, returning
+/// the container. `toast` is `Copy`, so the caller keeps a handle for asserts.
+fn mount_library(api: ApiCtx, toast: ToastState) -> web_sys::HtmlElement {
+    mount(move || {
+        provide_context::<ApiCtx>(api);
+        provide_context(AppState::new());
+        provide_context(PlaybackState::new());
+        provide_context(UiState::new());
+        provide_context(toast);
+        view! { <ScriptLibrary /> }
+    })
+}
+
+fn query_click(container: &web_sys::HtmlElement, selector: &str) -> bool {
+    match container.query_selector(selector) {
+        Ok(Some(el)) => {
+            let btn: web_sys::HtmlElement = el.dyn_into().unwrap();
+            btn.click();
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Click a button by its `title` attribute (row action buttons).
+fn click_by_title(container: &web_sys::HtmlElement, title: &str) -> bool {
+    query_click(container, &format!("[title=\"{title}\"]"))
+}
+
+/// Click a button by its `aria-label` (modal confirm/cancel).
+fn click_by_aria(container: &web_sys::HtmlElement, label: &str) -> bool {
+    query_click(container, &format!("[aria-label=\"{label}\"]"))
+}
+
+/// Click the first `<button>` whose trimmed text matches `label` (e.g. Import).
+fn click_text(container: &web_sys::HtmlElement, label: &str) -> bool {
+    let buttons = container.query_selector_all("button").unwrap();
+    for i in 0..buttons.length() {
+        let node = buttons.get(i).unwrap();
+        let el: web_sys::HtmlElement = node.dyn_into().unwrap();
+        if el.text_content().unwrap_or_default().trim() == label {
+            el.click();
+            return true;
+        }
+    }
+    false
+}
+
+fn assert_toast_contains_success(toast: &ToastState) {
+    assert!(
+        toast
+            .snapshot()
+            .iter()
+            .any(|t| matches!(t.level, ToastLevel::Success)),
+        "expected a success toast, got: {:?}",
+        toast.snapshot()
+    );
+}
+
+fn assert_toast_contains_error(toast: &ToastState) {
+    assert!(
+        toast
+            .snapshot()
+            .iter()
+            .any(|t| matches!(t.level, ToastLevel::Error)),
+        "expected an error toast, got: {:?}",
+        toast.snapshot()
+    );
+}
+
+fn assert_no_error_toast(toast: &ToastState) {
+    assert!(
+        !toast
+            .snapshot()
+            .iter()
+            .any(|t| matches!(t.level, ToastLevel::Error)),
+        "expected no error toast, got: {:?}",
+        toast.snapshot()
+    );
+}
+
+// ---- positive --------------------------------------------------------------
+
+#[wasm_bindgen_test]
+async fn import_success_creates_script_with_content() {
+    let path = "C:\\scripts\\my_talk.txt";
+    let mock = Rc::new(
+        MockApi::new()
+            .with_open_dialog(path)
+            .with_file(path, "Hello from import"),
+    );
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+
+    assert!(click_text(&container, "Import"), "Import button not found");
+    settle().await;
+
+    assert_eq!(mock.call_count("import_script_from_txt"), 1);
+    let scripts = mock.scripts();
+    let imported = scripts
+        .iter()
+        .find(|s| s.title == "my_talk")
+        .expect("imported script with filename-derived title missing");
+    assert_eq!(imported.content, "Hello from import");
+    assert_toast_contains_success(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn export_success_exports_correct_script() {
+    let out = "C:\\out\\talk.txt";
+    let mock = Rc::new(
+        MockApi::new()
+            .with_scripts(vec![mk_script("7", "Doomed Export", "body")])
+            .with_save_dialog(out),
+    );
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+
+    assert!(
+        click_by_title(&container, "Export"),
+        "Export button missing"
+    );
+    settle().await;
+
+    let exported = mock.exported();
+    assert_eq!(exported.len(), 1);
+    assert_eq!(exported[0].0, "7", "wrong script id exported");
+    assert_eq!(exported[0].1, out);
+    assert_toast_contains_success(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn duplicate_creates_copy() {
+    let mock = Rc::new(MockApi::new().with_scripts(vec![mk_script("3", "Original", "x")]));
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+
+    assert!(
+        click_by_title(&container, "Duplicate"),
+        "Duplicate button missing"
+    );
+    settle().await;
+
+    assert_eq!(mock.call_count("duplicate_script"), 1);
+    assert_eq!(mock.script_count(), 2);
+    assert_toast_contains_success(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn delete_confirm_full_sequence() {
+    let mock = Rc::new(MockApi::new().with_scripts(vec![mk_script("9", "Doomed Row", "x")]));
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+    assert!(text_of(&container).contains("Doomed Row"));
+
+    // open the confirmation modal
+    assert!(click_by_title(&container, "Delete"), "row Delete missing");
+    settle().await;
+    // delete must NOT happen before confirmation
+    assert!(
+        mock.was_not_called("delete_script"),
+        "delete fired before confirmation"
+    );
+
+    // confirm
+    assert!(
+        click_by_aria(&container, "Confirm"),
+        "modal Confirm button missing"
+    );
+    settle().await;
+
+    assert_eq!(
+        mock.call_count("delete_script"),
+        1,
+        "delete should fire exactly once after confirm"
+    );
+    assert!(
+        !text_of(&container).contains("Doomed Row"),
+        "row not removed"
+    );
+    assert_toast_contains_success(&toast);
+}
+
+// ---- negative --------------------------------------------------------------
+
+#[wasm_bindgen_test]
+async fn delete_cancel_keeps_row() {
+    let mock = Rc::new(MockApi::new().with_scripts(vec![mk_script("9", "Survivor", "x")]));
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+
+    assert!(click_by_title(&container, "Delete"), "row Delete missing");
+    settle().await;
+    assert!(click_by_aria(&container, "Cancel"), "modal Cancel missing");
+    settle().await;
+
+    assert!(mock.was_not_called("delete_script"));
+    assert!(text_of(&container).contains("Survivor"), "row was removed");
+    assert_no_error_toast(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn import_cancel_does_nothing() {
+    // No with_open_dialog -> open_file_dialog returns None (user cancelled)
+    let mock = Rc::new(MockApi::new());
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+
+    assert!(click_text(&container, "Import"), "Import button not found");
+    settle().await;
+
+    assert!(mock.was_not_called("import_script_from_txt"));
+    assert_eq!(mock.script_count(), 0);
+    assert_no_error_toast(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn import_failure_shows_error_toast() {
+    let path = "C:\\scripts\\bad.txt";
+    let mock = Rc::new(
+        MockApi::new()
+            .with_open_dialog(path)
+            .with_file(path, "content")
+            .fail_on("import_script_from_txt"),
+    );
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+
+    assert!(click_text(&container, "Import"), "Import button not found");
+    settle().await;
+
+    // dialog + read succeed; only the import command fails
+    assert_eq!(mock.call_count("import_script_from_txt"), 1);
+    assert_eq!(mock.script_count(), 0);
+    assert_toast_contains_error(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn export_cancel_does_not_export() {
+    // No with_save_dialog -> save_file_dialog returns None
+    let mock = Rc::new(MockApi::new().with_scripts(vec![mk_script("7", "Keep", "x")]));
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+
+    assert!(
+        click_by_title(&container, "Export"),
+        "Export button missing"
+    );
+    settle().await;
+
+    assert!(mock.was_not_called("export_script_to_txt_file"));
+    assert!(mock.exported().is_empty());
+    assert_no_error_toast(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn delete_failure_keeps_row_and_errors() {
+    let mock = Rc::new(
+        MockApi::new()
+            .with_scripts(vec![mk_script("9", "Sticky Row", "x")])
+            .fail_on("delete_script"),
+    );
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_library(api, toast);
+    settle().await;
+
+    assert!(click_by_title(&container, "Delete"), "row Delete missing");
+    settle().await;
+    assert!(
+        click_by_aria(&container, "Confirm"),
+        "modal Confirm missing"
+    );
+    settle().await;
+
+    assert_eq!(mock.call_count("delete_script"), 1);
+    assert!(
+        text_of(&container).contains("Sticky Row"),
+        "row was removed"
+    );
+    assert_toast_contains_error(&toast);
 }
