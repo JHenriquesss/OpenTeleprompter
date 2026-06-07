@@ -1,0 +1,9 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for OpenPrompter RS",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open"
+  ]
+}

@@ -1,0 +1,223 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Trunk
+        run: cargo install trunk --locked
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2"
+
+      - name: Formatting check
+        run: cargo fmt --all -- --check
+
+      - name: Backend cargo check
+        run: cargo check -p openprompter-rs-tauri --all-targets
+
+      - name: Backend tests
+        run: cargo test -p openprompter-rs-tauri
+
+      - name: Backend clippy
+        shell: bash
+        run: >
+          cargo clippy -p openprompter-rs-tauri
+          --all-targets --all-features
+          -- -D warnings
+
+      - name: Frontend WASM build
+        run: trunk build
+
+      - name: Build Windows installer
+        run: cargo tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+
+      - name: Package portable ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "portapp" -Force | Out-Null
+          Copy-Item "target/release/openprompter-rs-tauri.exe" "portapp/OpenPrompter RS.exe"
+          Copy-Item "docs/portable-readme.txt" "portapp/README-INSTALL.txt"
+          Compress-Archive -Path "portapp/*" -DestinationPath "portapp/OpenPrompter.RS_portable_x64.zip"
+          Copy-Item "portapp/OpenPrompter.RS_portable_x64.zip" "target/release/"
+
+      - name: Generate SHA256 checksums (Windows)
+        shell: pwsh
+        run: |
+          Get-FileHash "target/release/bundle/msi/*.msi" | ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), ($_.Path | Split-Path -Leaf) } | Out-File -FilePath "target/release/SHA256SUMS-windows.txt" -Encoding ascii
+          Get-FileHash "target/release/bundle/nsis/*.exe" | ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), ($_.Path | Split-Path -Leaf) } | Out-File -FilePath "target/release/SHA256SUMS-windows.txt" -Encoding ascii -Append
+          Get-FileHash "target/release/OpenPrompter.RS_portable_x64.zip" | ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), ($_.Path | Split-Path -Leaf) } | Out-File -FilePath "target/release/SHA256SUMS-windows.txt" -Encoding ascii -Append
+          Get-Content "target/release/SHA256SUMS-windows.txt"
+
+      - name: Upload Windows artifacts to release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
+            target/release/OpenPrompter.RS_portable_x64.zip
+            target/release/SHA256SUMS-windows.txt
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+
+  build-linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Linux Tauri system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Trunk
+        run: cargo install trunk --locked
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2"
+
+      - name: Formatting check
+        run: cargo fmt --all -- --check
+
+      - name: Backend cargo check
+        run: cargo check -p openprompter-rs-tauri --all-targets
+
+      - name: Backend tests
+        run: cargo test -p openprompter-rs-tauri
+
+      - name: Backend clippy
+        run: >
+          cargo clippy -p openprompter-rs-tauri
+          --all-targets --all-features
+          -- -D warnings
+
+      - name: Frontend WASM build
+        run: trunk build
+
+      - name: Build Linux bundle
+        run: cargo tauri build
+
+      - name: Generate SHA256 checksums (Linux)
+        run: |
+          sha256sum target/release/bundle/appimage/*.AppImage | sed 's|target/release/bundle/appimage/||' > target/release/SHA256SUMS-linux.txt
+          sha256sum target/release/bundle/deb/*.deb | sed 's|target/release/bundle/deb/||' >> target/release/SHA256SUMS-linux.txt
+          cat target/release/SHA256SUMS-linux.txt
+
+      - name: Upload Linux artifacts to release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/deb/*.deb
+            target/release/SHA256SUMS-linux.txt
+          draft: false
+          prerelease: true
+          generate_release_notes: false
+
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Trunk
+        run: cargo install trunk --locked
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2"
+
+      - name: Formatting check
+        run: cargo fmt --all -- --check
+
+      - name: Backend cargo check
+        run: cargo check -p openprompter-rs-tauri --all-targets
+
+      - name: Backend tests
+        run: cargo test -p openprompter-rs-tauri
+
+      - name: Backend clippy
+        run: >
+          cargo clippy -p openprompter-rs-tauri
+          --all-targets --all-features
+          -- -D warnings
+
+      - name: Frontend WASM build
+        run: trunk build
+
+      - name: Build macOS bundle
+        run: cargo tauri build
+
+      - name: Generate SHA256 checksums (macOS)
+        run: |
+          shasum -a 256 target/release/bundle/dmg/*.dmg | sed 's|target/release/bundle/dmg/||' > target/release/SHA256SUMS-macos.txt
+          cat target/release/SHA256SUMS-macos.txt
+
+      - name: Upload macOS artifacts to release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            target/release/bundle/dmg/*.dmg
+            target/release/SHA256SUMS-macos.txt
+          draft: false
+          prerelease: true
+          generate_release_notes: false

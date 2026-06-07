@@ -1,0 +1,36 @@
+# Glossary
+
+| Term | Meaning |
+|------|---------|
+| **Script** | A teleprompter document: id, title, content, created_at, updated_at |
+| **AppSettings** | Persistent user preferences: font_size, line_height, text_width, scroll_speed, mirror_mode, theme, countdown_seconds, mirror_vertical, reading_guide_enabled |
+| **PlaybackState** | Runtime prompter state: is_playing, scroll_y, speed |
+| **UiState** | Frontend-only UI controls: font_size, line_height, text_width, mirror_mode, mirror_vertical, countdown_seconds, reading_guide, show_shortcut_help, theme |
+| **Mirror mode** | CSS `scaleX(-1)` transform for beam-splitter teleprompter hardware |
+| **Mirror vertical** | CSS `scaleY(-1)` transform for vertical flip of prompter text |
+| **Prompter mode** | Fullscreen view where the script scrolls automatically |
+| **View** | Leptos enum routing: `Library \| Editor \| Prompter \| Settings` |
+| **ScriptData** | Frontend serializable mirror of backend Script: id, title, content, created_at, updated_at |
+| **AppSettingsData** | Frontend serializable mirror of backend AppSettings: font_size, line_height, text_width, scroll_speed, mirror_mode, theme, countdown_seconds, mirror_vertical, reading_guide_enabled |
+| **library_refresh_trigger** | `RwSignal<u32>` in AppState. Incremented after any mutation → ScriptLibrary re-fetches |
+| **theme CSS variables** | `--bg-main`, `--bg-panel`, `--text-main`, `--text-muted`, `--accent`, `--border-color`, `--input-bg`, `--input-border`, `--button-primary-bg`, `--button-primary-text`, `--button-ghost-border`, `--button-ghost-text`, `--bg-overlay`, `--scrollbar-thumb`, `--scrollbar-track`, etc. Defined in `<style>` tag in AppShell. Applied via `.theme-dark` / `.theme-light` class on root div. Full component coverage (Phase 5.1). PrompterView excluded (dark-first) |
+| **release.yml** | `.github/workflows/release.yml`. Tag-triggered (`v*`) GitHub Actions workflow. Validates, builds Windows MSI+NSIS installers, uploads to GitHub Release |
+| **phase tag** | Internal milestone tag, e.g. `v0.6.0-phase6`. Does NOT trigger public release workflow (though `v*` pattern matches — harmless) |
+| **release tag** | Public distribution tag, e.g. `v0.6.0-beta.1`. Triggers release.yml → artifacts uploaded to GitHub Release |
+| **unsigned build** | Windows installer not Authenticode-signed. Users see SmartScreen warning. Acceptable for beta; planned for future phase |
+| **SHA256SUMS** | Per-platform checksum files uploaded to GitHub Release. `SHA256SUMS-windows.txt` (MSI+NSIS+ZIP), `SHA256SUMS-linux.txt` (AppImage+deb), `SHA256SUMS-macos.txt` (DMG). Generated via `Get-FileHash` (Windows), `sha256sum` (Linux), `shasum -a 256` (macOS) |
+| **MSI Error 1603** | Windows Installer fatal error on same-version reinstall. Root cause: Tauri's MSI has same product version on rebuild → component table inconsistency. Affects MSI only. NSIS and portable ZIP unaffected. Resolution: use NSIS for upgrades, MSI for clean installs only |
+| **release notes template** | Standardized messaging in docs/release.md for every beta release: unsigned builds, no account required, no internet after download, platform-specific warnings, Windows as primary tested platform |
+| **ScriptPlaybackState** | Domain entity holding per-script prompter state: script_id, scroll_offset_px, speed_multiplier, font_size, line_height, mirror_mode, mirror_vertical, updated_at. Stored in its own SQLite table with FK→scripts ON DELETE CASCADE |
+| **ScriptPlaybackStateData** | Frontend serializable mirror of backend ScriptPlaybackState: all fields as Option<T> for partial updates |
+| **Pause marker** | Embedded `[pause:N]` or `[breath]` in script content. Parsed into `PauseMarker{position: usize, duration_secs: f64}`. Playback pauses at marker position for specified duration. Text between markers highlighted in red |
+| **Rehearsal mode** | ScriptLibrary action showing word count + estimated reading time without entering fullscreen playback |
+| **Resume playback** | Periodic save (3s interval) of ScriptPlaybackState during playback. On re-entry, shows dialog with progress % and choice to resume or start over |
+| **Jump controls** | Arrow Left/Right: ~5s jump. Shift+Arrow Left/Right: ~20s big jump. Visual toast feedback ("+5s", "-5s", "+20s", "-20s") with fade-out animation |
+| **Speed preset** | One-click speed buttons in floating controls: 0.5×, 1×, 1.5×, 2×, 3×. Keyboard shortcuts 1–5 also work |
+| **Custom speed input** | `<input type="number">` in floating controls. `validate_speed()` clamps to 0.25–5.0. Shows friendly error on invalid input |
+| **ToastState** | Leptos context: `RwSignal<Vec<ToastMessage>>`. Global unique IDs via `AtomicU32` static. 4 add methods: `add_success`, `add_error`, `add_warning`, `add_info`. Auto-dismiss 4s via `setTimeout` + `Closure::once`. Provided in `App::new()`, consumed via `expect_context::<ToastState>()`. [[src/state/toast.rs]] |
+| **ToastContainer** | Leptos component. Renders fixed bottom-right, `z-index: 1000`, `pointer-events: none` container with `auto` on each card. Uses `<For>` for reactive list. Animation `toastIn` (0.2s ease-out). Close button per card. [[src/state/toast.rs]] |
+| **ToastLevel** | Enum: `Success`, `Error`, `Warning`, `Info`. Each has CSS class (`toast-success`, `toast-error`, `toast-warning`, `toast-info`) and icon character. [[src/state/toast.rs]] |
+| **wasm-bindgen-test** | Dev-dependency for frontend WASM unit tests. Tests annotated with `#[wasm_bindgen_test::wasm_bindgen_test]`. Run via `wasm-pack test --headless --chrome`. 11 tests total (5 speed + 6 mirror). [[src/prompter/speed.rs]] [[src/prompter/mirror.rs]] |
+| **WASM frontend tests** | 11 tests running in headless Chrome via `wasm-pack test --headless --chrome`. All pure-logic (no DOM, no Tauri IPC). Tests: speed (validate_speed, speed_label, presets, word_count, estimated_reading_seconds), mirror (mirror_transform 2 combos, mirror_transform_combined 4 combos). CI step runs after `trunk build`. |

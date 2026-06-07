@@ -1,0 +1,28 @@
+# Rust build artifacts
+target/
+src-tauri/target/
+
+# Trunk frontend dist
+dist/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+
+# Runtime database files
+*.db
+*.db-shm
+*.db-wal
+openprompter-rs/

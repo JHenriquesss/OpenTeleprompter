@@ -1,0 +1,180 @@
+# Open Threads
+
+## Carried over (still open)
+
+| Thread | Detail |
+|--------|--------|
+| **wasm-bindgen-cli network dep** | trunk downloads wasm-bindgen CLI from GitHub on first build. 504 timeout when GitHub under load. Pre-install via `cargo install wasm-bindgen-cli --version 0.2.122` as workaround |
+| **Non-ASCII Windows paths** | Cross-platform paths with Unicode break trunk's `canonicalize()` in watch-ignore scanning. Keep `Trunk.toml` watch.ignore empty |
+| **Tray icon** | No system tray in current scope |
+| **CI workflow** | `.github/workflows/ci.yml` runs on PR + push to main. Feature branches do not trigger CI. Phase 6 merged into main (040bce1); CI ran green on push |
+| **Library refresh granularity** | `refresh_library()` re-fetches entire list on any mutation. Could optimize: insert/remove in-place on create/delete |
+| **ScriptEditor stale read** | `perform_save()` reads signals at call time. Low risk (async gap ~ms) |
+| **Cargo PDB filename collision warning** | `warning: output filename collision at ...\openprompter_rs_tauri.pdb` when running `cargo test`. lib + bin targets in same crate produce same PDB name. Harmless but noisy. Consider renaming bin target |
+
+## Phase 5 deferrals
+
+| Thread | Detail |
+|--------|--------|
+| **Screenshots freshness** | Regenerate screenshots with synthetic demo content before next public release. |
+
+## Phase 7/7.1 carry-overs
+
+| Thread | Detail |
+|--------|--------|
+| **Unsigned Windows installers** | Authenticode signing not configured. Users see SmartScreen warning on download/install. Requires code signing certificate (paid, org validation). Will be addressed in a future phase. SmartScreen can be bypassed via "More info → Run anyway" |
+| **Unsigned macOS builds** | Gatekeeper blocks unsigned app on first launch. Requires Apple Developer Program enrollment + notarization. Workaround: right-click → Open |
+| **macOS Intel builds** | Only `aarch64` (Apple Silicon) DMG built. `macos-latest` now maps to ARM. Need `macos-13` for x86_64 or matrix with both archs |
+| **Linux RPM** | Only deb + AppImage. No RPM for Fedora/RHEL. Requires `rpmbuild` or additional CI deps |
+| **`cargo install tauri-cli` compile time** | Compiles from source on every cache-miss CI run. Adds ~10 min per platform. Could use `cargo binstall tauri-cli` for pre-built binary, or `tauri-apps/tauri-action` which handles CLI download and build in one step |
+| **Node.js 20 action deprecation** | `actions/checkout@v4` and `softprops/action-gh-release@v2` run on Node.js 20. GitHub forcing Node.js 24 by Sep 2026. Update to latest versions (v5 and v2 latest) or add `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` env |
+| **windows-latest → windows-2025** | GitHub announcing redirection of windows-latest to windows-2025-vs2026 by Jun 15, 2026. Verify release.yml still works after migration, or pin to `windows-2025` explicitly |
+| **Auto-update** | Tauri v2 updater plugin not configured. Users must manually download new releases from GitHub. Could add `tauri-plugin-updater` in a future phase |
+| **Tray icon** | No system tray. App lives in taskbar only. Could add minimize-to-tray + notification for background playback |
+| **Linux AppImage large size** | 78 MB due to bundled webkit2gtk runtime. Could strip or compress, or document minimum size expectation |
+| **Phase tags trigger release workflow** | Tags like `v0.7.0-phase7` match `v*` and create duplicate releases. Harmless but noisy. Could restrict release.yml to `v[0-9]+.[0-9]+.[0-9]+` pattern |
+| **Checksum file path cosmetics (Linux/macOS)** | SHA256SUMS files use build-directory paths. `sha256sum --check` requires same directory structure. Manual hash comparison is the primary workflow. Could fix with `sha256sum --basename` or `cd` + `sha256sum *.AppImage` |
+
+## Resolved
+
+### Phase 1a (stabilization)
+
+| Thread | Resolution |
+|--------|-----------|
+| Export to file | Frontend Blob download |
+| Animation loop leak | `Rc<Cell<bool>>` + `on_cleanup` |
+| Keyboard listener leak | `on_cleanup` + `remove_event_listener_with_callback` |
+| Unused imports/vars | 6 instances removed |
+| Test location | Moved to `src-tauri/tests/` |
+| Workspace config | `[workspace]` added to root |
+
+### Phase 1.2 (real build validation)
+
+| Thread | Resolution |
+|--------|-----------|
+| Compilation verification | Windows 10: Rust 1.96.0, trunk 0.21.14, tauri-cli 2.11.2 |
+| Backend check + test + clippy | All green |
+| Frontend trunk build | 58 compilation errors fixed |
+| GUI launch | `cargo tauri dev` opens window |
+| Icons | Generated via `npx @tauri-apps/cli icon` |
+| Unused deps | `uuid` + `chrono` removed from frontend |
+| wasm-bindgen-futures | Added to frontend deps |
+
+### Phase 2 (Tauri command integration)
+
+| Thread | Resolution |
+|--------|-----------|
+| Frontend cargo check | Fixed missing `SignalUpdate` import |
+| Loading states | ScriptLibrary, ScriptEditor, SettingsPanel |
+| Error display | Per-component inline errors |
+| Stubs removed | All components call real backend |
+
+### Phase 4 (production readiness)
+
+| Thread | Resolution |
+|--------|-----------|
+| Delete confirmation UX | ConfirmModal component replaces window.confirm() |
+| Native file dialogs | tauri-plugin-dialog v2.7.1 for import/export |
+| Auto-save | Debounced 500ms auto-save with status indicator |
+| Import stub | Native file dialog wired |
+
+### Phase 5 (public UX polish)
+
+| Thread | Resolution |
+|--------|-----------|
+| Theme toggle | CSS variables + toggle + persistence. Partial coverage (root container + scrollbars only) |
+| Ctrl+S save shortcut | `on:keydown` on title + textarea, `perform_save()` closure |
+
+### Phase 5.1 (CSS variable migration)
+
+| Thread | Resolution |
+|--------|-----------|
+| Light theme usability | 25+ CSS vars, 6 components migrated (`sidebar`, `script_library`, `script_editor`, `settings_panel`, `confirm_modal`, `app_shell`). Prompter stays dark-first |
+| Hardcoded colors | `#16213e`, `#e94560`, `#333`, `#555`, `#aaa`, `#e0e0e0` → `var()` in all components |
+
+### Phase 6 (packaging and release)
+
+| Thread | Resolution |
+|--------|-----------|
+| Windows installer | MSI + NSIS via `cargo tauri build`, verified locally and on CI |
+| GitHub Release | `release.yml` workflow, `softprops/action-gh-release@v2`, assets uploaded to `v0.6.0-beta.1` |
+| Version consistency | Bumped `0.1.0` → `0.6.0` across all metadata files + sidebar |
+| Release docs | `docs/release.md` with build/release/test instructions |
+| README releases | Releases section with badge + link to GitHub Releases |
+| Installer test | Manual: install → launch → close → uninstall (all pass) |
+
+### Phase 6.1 (merge into main + release verification)
+
+| Thread | Resolution |
+|--------|-----------|
+| Phase 6 in main | Merged `--no-ff` into main (040bce1). No conflicts |
+| Post-merge validation | fmt/check/14 tests/clippy/trunk/build — all green on main |
+| `cargo tauri build` on main | 2m13s, MSI + NSIS produced |
+| CI on main | Green (push event) |
+| Public download test | MSI from GitHub Release, NSIS install+launch+uninstall — all pass |
+| SmartScreen warning | Noted as expected for unsigned beta |
+
+### Phase 7 (cross-platform packaging)
+
+| Thread | Resolution |
+|--------|-----------|
+| Linux build in release.yml | Added `build-linux` job (ubuntu-latest): validation → `cargo tauri build` → AppImage + deb |
+| macOS build in release.yml | Added `build-macos` job (macos-latest): validation → `cargo tauri build` → DMG |
+| Windows job preserved | Unchanged: MSI + NSIS still generated and uploaded |
+| Version bump | `0.6.0` → `0.7.0` across Cargo.toml, src-tauri/Cargo.toml, tauri.conf.json, sidebar.rs |
+| Release tags | `v0.7.0-phase7` + `v0.7.0-beta.1` pushed; release workflow triggered for both |
+| CI results | macOS 15m49s ✅, Linux 20m35s ✅, Windows 34m39s ✅ |
+| Release artifacts | 5 assets on GitHub Release: MSI, NSIS, AppImage, deb, DMG |
+| Docs updated | README.md (cross-platform download table), docs/release.md (platform table, unsigned instructions per platform) |
+
+### Phase 7b (user-friendly distribution)
+
+| Thread | Resolution |
+|--------|-----------|
+| Windows portable ZIP | `OpenPrompter.RS_portable_x64.zip` created in release.yml via `Compress-Archive` (EXE + README-INSTALL.txt); uploaded alongside MSI+NSIS |
+| User-friendly install docs | `docs/install.md` — non-developer guide for all platforms with SmartScreen/Gatekeeper workarounds |
+| README clarity | Restructured with "Download and Install" section above dev docs; explicitly states no account/cloud/payment |
+| Portable readme | `docs/portable-readme.txt` bundled inside ZIP |
+| All builds unsigned | Documented transparently in `docs/install.md` with "Is it safe?" section |
+| Tags force-updated | `v0.7.0-phase7` + `v0.7.0-beta.1` moved to latest commit; release replaced with 6 artifacts |
+
+### Phase 7.1 (release trust and install reliability)
+
+| Thread | Resolution |
+|--------|-----------|
+| File integrity verification | Per-platform SHA256 checksum files generated and uploaded to GitHub Release alongside binaries |
+| docs/install.md clarity | "Which file should I download?" table + checksum verification guide |
+| docs/release.md completeness | Release notes template, checksums table, MSI 1603 investigation with docs |
+| MSI reinstall error 1603 | Investigated, root cause documented (Windows Installer component table inconsistency), NSIS recommended for upgrades |
+| README download section | Clearer recommendations per platform, current beta version linked |
+| Screenshots freshness | Reviewed — still accurate (dark theme default). No update needed |
+
+### Phase 8 (recording experience)
+
+| Thread | Resolution |
+|--------|-----------|
+| Speed presets | 6 preset buttons (0.5×–3×) wired to `set_scroll_speed`. Keyboard 1–5 preserved |
+| Pause markers | `parse_pause_markers()` returns `Vec<PauseMarker>`. Text highlighted red. Playback pauses at markers |
+| Rehearsal mode | Toggle in ScriptLibrary with word count + estimated reading time |
+| Recording-safe controls | Disabled controls during recording via `is_recording` flag |
+| 3 Rust bugs | Fixed E0716, E0597, E0382 in prompter_view.rs |
+
+### Phase 9 (recording continuity)
+
+| Thread | Resolution |
+|--------|-----------|
+| Custom speed input | `<input type="number">` with validation, clamped 0.25–5.0, error toast |
+| Resume playback | `ScriptPlaybackState` domain + SQLite table + resume dialog on re-entry |
+| Per-script preferences | Speed, font, mirror restored from `script_playback_state` on resume |
+| Jump controls | Arrow: ~5s, Shift+Arrow: ~20s. Visual toast feedback |
+| Reset saved position | Reset button clears `script_playback_state`. R key resets scroll to top |
+| 4 new backend tests | save/load/update/delete playback state |
+| cargo fmt CI fix | 4 closures + chained method reformatted. --amend + force-push. Re-run green |
+
+### Phase 10 (frontend reliability)
+
+| Thread | Resolution |
+|--------|-----------|
+| Error handling UX | ToastState + ToastContainer: 4 levels, auto-dismiss 4s, centralized in all components. Jump feedback migrated to toasts. Settings inline errors removed |
+| Frontend WASM test harness | 11 WASM tests running via `wasm-pack test --headless --chrome`. CI step added. Pure-logic modules (speed, mirror) tested |
+| Component tests blocked | Component integration tests still blocked on Tauri API trait + mock refactor (docs/frontend-testing.md has roadmap, ~1250 lines estimate) |
