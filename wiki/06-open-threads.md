@@ -1,5 +1,21 @@
 # Open Threads
 
+## Phase 13 candidate — CI maintenance (DEADLINE-SENSITIVE)
+
+| Thread | Detail |
+|--------|--------|
+| **windows-latest → windows-2025** | GitHub redirects `windows-latest` ~Jun 15 2026. Verify `release.yml`/`ci.yml` still build, or pin `windows-2025` explicitly. |
+| **Node 24 action deprecation** | `actions/checkout` + release actions on Node 20; GitHub forcing Node 24. Bump action versions or set `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`. |
+
+## Phase 11–12 (testing)
+
+| Thread | Detail |
+|--------|--------|
+| **Still manual-only** | Real Tauri IPC / OS dialogs: save/import/export toast round-trips against the *real* backend, native file dialogs, smooth-playback visual confirmation, theme in the real window. MockApi covers the *logic* of these flows. |
+| **Frontend clippy ungated** | CI runs clippy on backend only. Frontend wasm has baseline warnings (engine.rs complex type, speed.rs RangeInclusive, Default impls, clone-on-Copy, let-unit). Not a gate; don't add *new* ones gratuitously. |
+| **Phase/`v*` tags trigger release.yml** | Tags like `v0.12.0-phase12` match `v*` → fire build-linux/macos/windows jobs (noise on PRs, not PR gates). Could restrict to `v[0-9]+.[0-9]+.[0-9]+`. |
+| **`.dv-state.json` local-only** | Phase-close edits not pushed (direct main push blocked; PR-only). dv-state is local orchestration; remote copy reflects last merged phase's mid-state. |
+
 ## Carried over (still open)
 
 | Thread | Detail |
