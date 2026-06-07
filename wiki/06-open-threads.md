@@ -1,11 +1,12 @@
 # Open Threads
 
-## Phase 13 candidate — CI maintenance (DEADLINE-SENSITIVE)
+## CI maintenance — RESOLVED in Phase 13
 
-| Thread | Detail |
-|--------|--------|
-| **windows-latest → windows-2025** | GitHub redirects `windows-latest` ~Jun 15 2026. Verify `release.yml`/`ci.yml` still build, or pin `windows-2025` explicitly. |
-| **Node 24 action deprecation** | `actions/checkout` + release actions on Node 20; GitHub forcing Node 24. Bump action versions or set `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`. |
+| Thread | Resolution |
+|--------|-----------|
+| **windows-latest → windows-2025** | `release.yml` Windows job pinned to `windows-2025` (explicit). No `windows-latest` left in any workflow. Verified via `workflow_dispatch` build. |
+| **Node 24 action deprecation** | `softprops/action-gh-release` bumped v2 → v3 (Node 24). `Swatinem/rust-cache@v2` (no Node 24 release yet) bridged via workflow-level `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` in `ci.yml` + `release.yml` — remove the env once rust-cache ships a Node 24 major. `actions/checkout@v5` already Node 24. |
+| **Phase/`v*` tags triggered release.yml** | `release.yml` push trigger narrowed to semver (`v[0-9]+.[0-9]+.[0-9]+` + `-beta.[0-9]+`); phase tags like `v0.13.0-phase13` no longer match. Plus `workflow_dispatch` added for build verification without publishing (upload steps tag-guarded). |
 
 ## Phase 11–12 (testing)
 

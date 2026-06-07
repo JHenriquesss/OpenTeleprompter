@@ -3,19 +3,33 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      # Public-release tags only. Phase tags (e.g. v0.13.0-phase13) must NOT
+      # match, so internal phase milestones never trigger a release build.
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+"
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
+  # Bridge: forces Node 20 JS actions (Swatinem/rust-cache@v2 — no Node 24
+  # release yet) onto the Node 24 runtime, clearing deprecation warnings.
+  # Remove once rust-cache ships a Node 24 major.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2025
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Show release mode
+        shell: bash
+        run: |
+          echo "ref=${{ github.ref }}"
+          echo "is_tag=${{ startsWith(github.ref, 'refs/tags/') }}"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -75,7 +89,7 @@ jobs:
           Get-Content "target/release/SHA256SUMS-windows.txt"
 
       - name: Upload Windows artifacts to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
@@ -94,6 +108,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Show release mode
+        run: |
+          echo "ref=${{ github.ref }}"
+          echo "is_tag=${{ startsWith(github.ref, 'refs/tags/') }}"
 
       - name: Install Linux Tauri system deps
         run: |
@@ -151,7 +170,7 @@ jobs:
           cat target/release/SHA256SUMS-linux.txt
 
       - name: Upload Linux artifacts to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
@@ -169,6 +188,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Show release mode
+        run: |
+          echo "ref=${{ github.ref }}"
+          echo "is_tag=${{ startsWith(github.ref, 'refs/tags/') }}"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -212,7 +236,7 @@ jobs:
           cat target/release/SHA256SUMS-macos.txt
 
       - name: Upload macOS artifacts to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
