@@ -8,3 +8,6 @@ pub mod bindings;
 pub mod components;
 pub mod prompter;
 pub mod state;
+
+#[cfg(test)]
+mod component_tests;

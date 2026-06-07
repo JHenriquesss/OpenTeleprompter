@@ -1,4 +1,4 @@
-use crate::bindings::tauri_api;
+use crate::bindings::ApiCtx;
 use crate::components::prompter_view::PrompterView;
 use crate::components::script_editor::ScriptEditor;
 use crate::components::script_library::ScriptLibrary;
@@ -14,12 +14,14 @@ pub fn AppShell() -> impl IntoView {
     let app_state =
         use_context::<crate::state::app_state::AppState>().expect("AppState not provided");
     let ui = use_context::<UiState>().expect("UiState not provided");
+    let api = use_context::<ApiCtx>().expect("AppApi not provided");
 
     let current_view = move || app_state.view.get();
 
     create_effect(move |_| {
+        let api = api.clone();
         spawn_local(async move {
-            if let Ok(s) = tauri_api::get_settings().await {
+            if let Ok(s) = api.get_settings().await {
                 ui.theme.set(s.theme);
             }
         });

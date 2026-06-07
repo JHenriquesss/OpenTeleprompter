@@ -1,4 +1,5 @@
-use crate::bindings::tauri_api::{self, AppSettingsData};
+use crate::bindings::tauri_api::AppSettingsData;
+use crate::bindings::ApiCtx;
 use crate::state::playback_state::PlaybackState;
 use crate::state::toast::ToastState;
 use crate::state::ui_state::UiState;
@@ -9,85 +10,102 @@ pub fn SettingsPanel() -> impl IntoView {
     let ui = use_context::<UiState>().expect("UiState not provided");
     let playback = use_context::<PlaybackState>().expect("PlaybackState not provided");
     let toast = expect_context::<ToastState>();
+    let api = use_context::<ApiCtx>().expect("AppApi not provided");
     let (settings_error, set_settings_error) = create_signal::<Option<String>>(None);
     let (settings_loaded, set_settings_loaded) = create_signal(false);
     let (app_version, set_app_version) = create_signal(String::new());
 
-    create_effect(move |_| {
-        spawn_local(async move {
-            match tauri_api::get_settings().await {
-                Ok(s) => {
-                    ui.font_size.set(s.font_size);
-                    ui.line_height.set(s.line_height);
-                    ui.text_width.set(s.text_width);
-                    ui.mirror_mode.set(s.mirror_mode);
-                    ui.countdown_seconds.set(s.countdown_seconds);
-                    ui.mirror_vertical.set(s.mirror_vertical);
-                    ui.reading_guide.set(s.reading_guide_enabled);
-                    ui.theme.set(s.theme.clone());
-                    playback.speed.set(s.scroll_speed);
-                    set_settings_loaded.set(true);
+    create_effect({
+        let api = api.clone();
+        move |_| {
+            let api = api.clone();
+            spawn_local(async move {
+                match api.get_settings().await {
+                    Ok(s) => {
+                        ui.font_size.set(s.font_size);
+                        ui.line_height.set(s.line_height);
+                        ui.text_width.set(s.text_width);
+                        ui.mirror_mode.set(s.mirror_mode);
+                        ui.countdown_seconds.set(s.countdown_seconds);
+                        ui.mirror_vertical.set(s.mirror_vertical);
+                        ui.reading_guide.set(s.reading_guide_enabled);
+                        ui.theme.set(s.theme.clone());
+                        playback.speed.set(s.scroll_speed);
+                        set_settings_loaded.set(true);
+                    }
+                    Err(e) => {
+                        set_settings_error.set(Some(e));
+                        set_settings_loaded.set(true);
+                    }
                 }
-                Err(e) => {
-                    set_settings_error.set(Some(e));
-                    set_settings_loaded.set(true);
-                }
-            }
-        });
+            });
+        }
     });
 
-    create_effect(move |_| {
-        spawn_local(async move {
-            if let Ok(v) = tauri_api::get_app_version().await {
-                set_app_version.set(v);
-            }
-        });
+    create_effect({
+        let api = api.clone();
+        move |_| {
+            let api = api.clone();
+            spawn_local(async move {
+                if let Ok(v) = api.get_app_version().await {
+                    set_app_version.set(v);
+                }
+            });
+        }
     });
 
-    let on_reset = move |_| {
-        spawn_local(async move {
-            match tauri_api::reset_settings().await {
-                Ok(s) => {
-                    ui.font_size.set(s.font_size);
-                    ui.line_height.set(s.line_height);
-                    ui.text_width.set(s.text_width);
-                    ui.mirror_mode.set(s.mirror_mode);
-                    ui.countdown_seconds.set(s.countdown_seconds);
-                    ui.mirror_vertical.set(s.mirror_vertical);
-                    ui.reading_guide.set(s.reading_guide_enabled);
-                    playback.speed.set(s.scroll_speed);
-                    toast.add_success("Settings reset to defaults");
+    let on_reset = Callback::new({
+        let api = api.clone();
+        move |_: ()| {
+            let api = api.clone();
+            spawn_local(async move {
+                match api.reset_settings().await {
+                    Ok(s) => {
+                        ui.font_size.set(s.font_size);
+                        ui.line_height.set(s.line_height);
+                        ui.text_width.set(s.text_width);
+                        ui.mirror_mode.set(s.mirror_mode);
+                        ui.countdown_seconds.set(s.countdown_seconds);
+                        ui.mirror_vertical.set(s.mirror_vertical);
+                        ui.reading_guide.set(s.reading_guide_enabled);
+                        playback.speed.set(s.scroll_speed);
+                        toast.add_success("Settings reset to defaults");
+                    }
+                    Err(e) => {
+                        toast.add_error(&format!("Reset failed: {}", e));
+                    }
                 }
-                Err(e) => {
-                    toast.add_error(&format!("Reset failed: {}", e));
-                }
-            }
-        });
-    };
+            });
+        }
+    });
 
-    let on_save_settings = move |_| {
-        spawn_local(async move {
-            let settings = AppSettingsData {
-                font_size: ui.font_size.get(),
-                line_height: ui.line_height.get(),
-                text_width: ui.text_width.get(),
-                scroll_speed: playback.speed.get(),
-                mirror_mode: ui.mirror_mode.get(),
-                theme: ui.theme.get(),
-                countdown_seconds: ui.countdown_seconds.get(),
-                mirror_vertical: ui.mirror_vertical.get(),
-                reading_guide_enabled: ui.reading_guide.get(),
-            };
-            match tauri_api::update_settings(&settings).await {
-                Ok(_) => {
-                    toast.add_success("Settings saved");
+    let on_save_settings = Callback::new({
+        let api = api.clone();
+        move |_: ()| {
+            let api = api.clone();
+            spawn_local(async move {
+                let settings = AppSettingsData {
+                    font_size: ui.font_size.get(),
+                    line_height: ui.line_height.get(),
+                    text_width: ui.text_width.get(),
+                    scroll_speed: playback.speed.get(),
+                    mirror_mode: ui.mirror_mode.get(),
+                    theme: ui.theme.get(),
+                    countdown_seconds: ui.countdown_seconds.get(),
+                    mirror_vertical: ui.mirror_vertical.get(),
+                    reading_guide_enabled: ui.reading_guide.get(),
+                };
+                match api.update_settings(&settings).await {
+                    Ok(_) => {
+                        toast.add_success("Settings saved");
+                    }
+                    Err(e) => {
+                        toast.add_error(&format!("Save failed: {}", e));
+                    }
                 }
-                Err(e) => {
-                    toast.add_error(&format!("Save failed: {}", e));
-                }
-            }
-        });
-    };
+            });
+        }
+    });
 
     view! {
         <div style="padding: 24px; height: 100%; overflow-y: auto;">
@@ -308,7 +326,7 @@ pub fn SettingsPanel() -> impl IntoView {
 
                         <div style="display: flex; gap: 12px; margin-top: 16px;">
                             <button
-                                on:click=on_save_settings
+                                on:click=move |_| on_save_settings.call(())
                                 style="
                                     padding: 10px 24px; border: none; border-radius: 6px;
                                     background: var(--button-primary-bg); color: var(--button-primary-text); cursor: pointer;
@@ -318,7 +336,7 @@ pub fn SettingsPanel() -> impl IntoView {
                                 Save Settings
                             </button>
                             <button
-                                on:click=on_reset
+                                on:click=move |_| on_reset.call(())
                                 style="
                                     padding: 10px 24px; border: 1px solid var(--button-ghost-border); border-radius: 6px;
                                     background: transparent; color: var(--button-ghost-text); cursor: pointer;

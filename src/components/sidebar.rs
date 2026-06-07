@@ -1,15 +1,17 @@
-use crate::bindings::tauri_api;
+use crate::bindings::ApiCtx;
 use crate::state::app_state::{AppState, View};
 use leptos::*;
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let app_state = use_context::<AppState>().expect("AppState not provided");
+    let api = use_context::<ApiCtx>().expect("AppApi not provided");
     let (version, set_version) = create_signal("0.10.0".to_string());
 
     create_effect(move |_| {
+        let api = api.clone();
         spawn_local(async move {
-            if let Ok(v) = tauri_api::get_app_version().await {
+            if let Ok(v) = api.get_app_version().await {
                 set_version.set(v);
             }
         });

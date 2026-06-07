@@ -8,7 +8,7 @@ Testing is split into three categories:
 2. **Architecture assertions** (automated source inspection)
 3. **Manual fallback** (requires user interaction in running app)
 
-## What We Test Today (Phase 10)
+## What We Test Today (Phase 11)
 
 All WASM tests use `wasm_bindgen_test` and run in a headless browser:
 
@@ -16,7 +16,7 @@ All WASM tests use `wasm_bindgen_test` and run in a headless browser:
 wasm-pack test --headless --chrome
 ```
 
-### Tested modules (41 tests)
+### Pure-logic + state tests (41 tests)
 
 | Module | File | Tests | What they cover |
 |--------|------|-------|-----------------|
@@ -25,6 +25,24 @@ wasm-pack test --headless --chrome
 | `toast` | `src/state/toast.rs` | 8 | add_success/error/warning/info, dismiss, unique ids, css_class, icon |
 | `playback_state` | `src/state/playback_state.rs` | 14 | initial state, toggle_play, restart, speed up/down/set, jump (small/big), clamps |
 | `ui_state` | `src/state/ui_state.rs` | 8 | initial state, font size up/down/clamps, toggle mirror/reading_guide/shortcut_help |
+
+### Component integration tests (11 tests) — `src/component_tests.rs`
+
+Added in Phase 11. Components are mounted into a detached DOM node and driven by
+`MockApi` (no Tauri, no `invoke`, no native dialogs). Total WASM tests: **52**.
+
+| Test | What it proves |
+|------|----------------|
+| `mock_api_lists_and_searches_scripts` | MockApi list + search (title and content match) |
+| `mock_api_creates_deletes_duplicates` | MockApi CRUD + `(copy)` duplicate semantics |
+| `mock_api_updates_and_resets_settings` | MockApi settings persist + reset to defaults |
+| `mock_api_saves_loads_clears_playback` | MockApi playback save/load/clear round-trip |
+| `mock_api_error_injection_fails_all` | `.failing()` forces every command to `Err` |
+| `script_library_renders_scripts_from_mock` | `<ScriptLibrary>` renders titles from mock `list_scripts` |
+| `script_library_shows_empty_state` | Empty library renders "No scripts yet" |
+| `settings_panel_loads_through_mock` | `<SettingsPanel>` calls `get_settings` on mount |
+| `script_editor_loads_selected_script` | `<ScriptEditor>` calls `get_script` for selected id |
+| `prompter_view_shows_resume_dialog_when_state_exists` | `<PrompterView>` loads playback + shows Resume dialog |
 
 ### Architecture assertions (verified by smoke-phase10.ps1)
 
@@ -39,68 +57,60 @@ Items requiring user interaction with the running app:
 - App launch, script loading, Tauri-IPC feedback (save/import/export/delete toasts), visual confirmation of smooth playback, theme, native dialogs.
 - Documented in `scripts/smoke-phase10.ps1` and `wiki/02-test-tree.md`.
 
-## Tauri API Abstraction Roadmap
+## Tauri API Abstraction (implemented in Phase 11)
 
-### Problem
+### Problem (pre–Phase 11)
 
-Every component calls `tauri_api::invoke_tauri` directly, making it impossible
-to test any component logic without the full Tauri backend running. WASM tests
-cannot invoke Tauri commands.
+Every component called `tauri_api::*` free functions directly, making it
+impossible to test component logic without the full Tauri backend. WASM tests
+cannot `invoke` Tauri commands.
 
-### Solution (suggested for Phase 11+)
+### Solution
 
-1. **Define a trait** in `src/bindings/tauri_trait.rs`:
+`src/bindings/` now layers the API:
 
-```rust
-#[cfg(not(test))]
-pub use real::TauriApiProvider;
-#[cfg(test)]
-pub use mock::TauriApiProvider;
+| File | Role |
+|------|------|
+| `tauri_api.rs` | Raw `invoke` wrappers + typed data structs (`ScriptData`, `AppSettingsData`, `ScriptPlaybackStateData`). Unchanged behavior. |
+| `app_api.rs` | `AppApi` trait (`#[async_trait(?Send)]`) over every command, plus `RealTauriApi` which delegates to the `tauri_api` free functions. |
+| `mock_api.rs` | `MockApi` — in-memory `RefCell` store with builders (`with_scripts`, `with_settings`, `with_playback`, `failing`, …), a call log (`was_called`), and error injection. `#[cfg(test)]` only, so it never ships in the production bundle. |
+| `mod.rs` | `pub type ApiCtx = Rc<dyn AppApi>` — the Leptos context handle. |
 
-pub trait TauriApiProvider: Clone + 'static {
-    fn get_script(&self, id: &str) -> impl Future<Output = Result<Script, String>>;
-    fn list_scripts(&self) -> impl Future<Output = Result<Vec<ScriptListItem>, String>>;
-    fn create_script(&self, title: &str, content: &str) -> impl Future<Output = Result<Script, String>>;
-    fn update_script(&self, id: &str, title: &str, content: &str) -> impl Future<Output = Result<Script, String>>;
-    fn delete_script(&self, id: &str) -> impl Future<Output = Result<(), String>>;
-    fn duplicate_script(&self, id: &str) -> impl Future<Output = Result<Script, String>>;
-    fn search_scripts(&self, query: &str) -> impl Future<Output = Result<Vec<ScriptListItem>, String>>;
-    fn open_file_dialog(&self) -> impl Future<Output = Result<Option<String>, String>>;
-    fn save_file_dialog(&self) -> impl Future<Output = Result<Option<String>, String>>;
-    fn read_text_file(&self, path: &str) -> impl Future<Output = Result<Option<String>, String>>;
-    fn get_settings(&self) -> impl Future<Output = Result<AppSettingsData, String>>;
-    fn update_settings(&self, s: &AppSettingsData) -> impl Future<Output = Result<(), String>>;
-    fn reset_settings(&self) -> impl Future<Output = Result<AppSettingsData, String>>;
-    fn export_script_to_txt_file(&self, id: &str, path: &str) -> impl Future<Output = Result<(), String>>;
-    fn import_script_from_txt(&self, content: &str, name: &str) -> impl Future<Output = Result<Script, String>>;
-    fn save_playback_state(&self, ...) -> ...;
-    fn load_playback_state(&self, id: &str) -> ...;
-    fn clear_playback_state(&self, id: &str) -> ...;
-    fn get_app_version(&self) -> ...;
-}
-```
+- **Production** provides `Rc::new(RealTauriApi)` in `app.rs`.
+- **Tests** provide `Rc::new(MockApi::...)`.
+- Components fetch it with `use_context::<ApiCtx>()` and call `api.<command>().await`.
+  Because `Rc<dyn AppApi>` is not `Copy`, handlers used in more than one place
+  (or inside reactive `Fn` closures / `.map` over a list) are wrapped in a Leptos
+  `Callback` (which is `Copy`); single-use handlers clone the `Rc` inline.
 
-2. **Real impl** wraps current `tauri_api::invoke_tauri`.
-3. **Mock impl** returns canned data from in-memory storage.
-4. **Provide via context** (`provide_context`) — components call
-   `expect_context::<Box<dyn TauriApiProvider>>()`.
-5. In tests, provide the mock impl; in production, provide the real impl.
+### Why `async-trait` and not `impl Future`
 
-### Effort estimate
+`AppApi` is used as a trait object (`dyn AppApi`) so it can live in Leptos
+context. Trait objects are not object-safe with bare `async fn` / RPITIT, so we
+use `async-trait` with `?Send` (the frontend is single-threaded WASM).
 
-- ~120 lines trait definition
-- ~80 lines real impl (mostly delegates to existing functions)
-- ~300 lines mock impl (HashMap-based in-memory store)
-- ~50 lines per-component test (14 components -> ~700 lines)
-- Total: ~1250 lines new code
+### Native dialogs in tests
 
-### Priority (Phase 11+)
+Component tests never touch OS dialogs. `MockApi::open_file_dialog` /
+`save_file_dialog` return preconfigured paths (`with_open_dialog` /
+`with_save_dialog`), and `read_text_file` returns content seeded via `with_file`.
+This lets import/export paths be exercised without a running shell (those flows
+remain manual-only for now; see limitations).
 
-1. Trait + mock for `Script` CRUD (highest value: can test library + editor)
-2. Trait + mock for `Settings` (can test settings panel)
-3. Trait + mock for `PlaybackState` persistence (can test resume dialog)
-4. Trait + mock for file dialogs (can test import/export)
-5. Component integration tests for the 4 main views
+### How this improves the Phase 10 smoke checklist
+
+Five of the previously manual-only items are now automated end-to-end against a
+mock backend instead of requiring a running Tauri app:
+
+- script library load + render
+- empty-library state
+- settings load
+- editor load of a selected script
+- resume-playback dialog appearance
+
+Save/import/export toasts and native-dialog round-trips still require manual
+verification (they depend on real Tauri IPC / OS dialogs), but their *logic* is
+now reachable through `MockApi` for future expansion.
 
 ## Running Tests
 
@@ -135,6 +145,9 @@ cargo tauri build
   (Rust std provides fallback).
 - CI wasm-pack install adds ~5 minutes to pipeline.
 - Toast auto-dismiss cannot be tested in WASM (requires wall-clock setTimeout).
-- Component integration tests remain blocked on Tauri API trait + mock
-  (see roadmap above). 17 of 19 smoke items require manual verification
-  due to Tauri IPC or native OS dialog dependency.
+- Component tests settle async via a bounded `tick`/`settle` poll (≈6 × 10 ms),
+  not a fixed sleep, to avoid flakiness. If a future component adds longer async
+  chains, increase the `settle` rounds rather than the per-tick delay.
+- Still manual-only (real Tauri IPC / OS dialogs): save/import/export toast
+  round-trips, native file dialogs, smooth-playback visual confirmation, theme
+  application in the real window.

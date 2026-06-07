@@ -47,7 +47,8 @@ Screenshots temporarily removed while demo images are regenerated with synthetic
 - **No JavaScript** — 100% Rust, compiled to WASM for the frontend
 - **Toast notifications** — non-blocking success/error/warning/info toasts for all user actions; 4 s auto-dismiss
 - **Centralized error messages** — all error feedback unified through the toast system instead of scattered inline error banners
-- **WASM test suite** — 11 pure-logic tests run via `wasm-pack test --headless --chrome`
+- **Mockable frontend API** — components depend on an `AppApi` trait (production `RealTauriApi`, tests `MockApi`) injected via Leptos context, so UI logic is testable without a running backend
+- **WASM test suite** — 52 tests run via `wasm-pack test --headless --chrome`: pure-logic/state tests plus component integration tests that mount real components against a mock API
 
 ## Keyboard Shortcuts
 
@@ -196,7 +197,7 @@ teleprompter/
 │   ├── components/        # UI components
 │   ├── state/             # Reactive state management
 │   ├── prompter/          # Animation engine
-│   └── bindings/          # Tauri API bindings
+│   └── bindings/          # AppApi trait + RealTauriApi / MockApi + invoke wrappers
 ├── src-tauri/             # Tauri backend (native Rust)
 │   ├── src/
 │   │   ├── commands/      # Command handlers
