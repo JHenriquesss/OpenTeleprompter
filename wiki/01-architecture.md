@@ -244,3 +244,18 @@ Two repos after privacy incident (2026-06-07):
 | `JHenriquesss/OpenTeleprompter` | PUBLIC | Active development. Fresh single commit (no old history, tags, PRs, releases). Clean export + validation before push |
 
 **Migration method:** `robocopy` source (excluding .git, target, dist, src-tauri/target, *.db, *.sqlite), sanitized references, re-initialized git, pushed to new public repo. Old repo kept private for archive access.
+
+## Frontend API abstraction (Phase 11)
+
+`src/bindings/` layers Tauri access so components are testable without a backend:
+
+| File | Role |
+|------|------|
+| `tauri_api.rs` | Raw `invoke` wrappers + typed structs (`ScriptData`, `AppSettingsData`, `ScriptPlaybackStateData`). Unchanged. |
+| `app_api.rs` | `AppApi` trait (`#[async_trait(?Send)]`) over all commands; `RealTauriApi` delegates to the `tauri_api` free fns (prod path byte-identical). |
+| `mock_api.rs` | `MockApi` test double — `#[cfg(test)]` only; in-memory `RefCell` store, builders, call log, error injection. |
+| `mod.rs` | `pub type ApiCtx = Rc<dyn AppApi>` — Leptos context handle. |
+
+- Flow: `app.rs` provides `Rc::new(RealTauriApi)`; components do `use_context::<ApiCtx>()` → `api.<cmd>().await`. Tests provide `Rc::new(MockApi)`.
+- `Rc<dyn AppApi>` is not `Copy` → handlers used >once / in reactive `Fn` closures / list `.map` are wrapped in Leptos `Callback` (Copy); single-use handlers clone the `Rc` inline. See [[04-decisions.md]].
+- Component tests (`src/component_tests.rs`, Phase 11–12): mount real components into a detached DOM via `mount_to`, drive real DOM clicks (`click_by_title`/`click_by_aria`/`click_text`), assert via MockApi (`call_count`/`was_not_called`/`exported`/`scripts`) + `ToastState::snapshot()`. Async settles via bounded `tick`/`settle` poll. [[02-test-tree.md]]

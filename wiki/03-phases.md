@@ -671,3 +671,30 @@ After containment, created a new clean public repository:
 - 4 PR refs (`refs/pull/1-4/head`) in old repo still reference old commits — require GitHub Support to purge
 - Third-party clones/forks may exist (repo was public before containment)
 - Safe screenshots with synthetic demo content: deferred until needed for next public release
+
+## Phase 11: Tauri API Abstraction and Component Test Foundation
+
+**Scope:** make frontend Tauri access mockable; add first component-level integration tests. Testability only, no product change.
+**Merged:** `0e69e6b` on main · tag `v0.11.0-phase11` · PR #2.
+
+- New `src/bindings/app_api.rs`: `AppApi` trait (`#[async_trait(?Send)]`) over all 20 commands; `RealTauriApi` delegates to existing `tauri_api` invoke wrappers (production path byte-identical).
+- New `src/bindings/mock_api.rs` (`#[cfg(test)]`): in-memory `RefCell` store, builders, call log, error injection. Never ships in prod bundle.
+- `src/bindings/mod.rs`: `pub type ApiCtx = Rc<dyn AppApi>`. Production provides `Rc::new(RealTauriApi)` in `app.rs`; tests provide `Rc::new(MockApi)`.
+- All 6 components rewired off direct `tauri_api::*` to `use_context::<ApiCtx>()`. Multi-use / list-`.map` / reactive-`Fn` handlers wrapped in Leptos `Callback` (Copy); single-use handlers clone the `Rc` inline.
+- 11 new WASM tests in `src/component_tests.rs` (5 MockApi foundation + 6 mounted-component). Mounted via `mount_to` into detached DOM; async settles through bounded `tick`/`settle` poll. [[02-test-tree.md]]
+- **Validation:** 18 backend + 52 WASM, fmt + backend clippy + trunk build + `cargo tauri build` (MSI+NSIS). CI green PR + main.
+- must-exist 8/8, must-not-exist clean.
+
+## Phase 12: Import/Export & Error-Path Component Tests
+
+**Scope:** cover ScriptLibrary import/export/duplicate/delete-confirm flows end-to-end vs MockApi — happy, cancel, targeted-failure. Test + additive support only.
+**Merged:** `38d51b1` on main · tag `v0.12.0-phase12` · PR #3.
+
+- MockApi additions: `fail_on(cmd)` targeted failure (vs global `failing`), `call_count`/`was_not_called`, `exported() -> Vec<(id,path)>` recording, `scripts()` snapshot.
+- `ToastState::snapshot()` read-only clone (additive prod). `ConfirmModal` `aria-label="Confirm"/"Cancel"` (additive prod, a11y + unambiguous test selection vs duplicate "Delete" text).
+- Test helpers: `click_by_title` (row), `click_by_aria` (modal), `click_text` (Import); `assert_toast_contains_success/error`, `assert_no_error_toast`.
+- 9 new component tests: import_success (title+body), export_success (correct id), duplicate, delete_confirm_full_sequence (not-called pre-confirm, once post, row gone), delete_cancel, import_cancel, import_failure, export_cancel, delete_failure. [[02-test-tree.md]]
+- **Validation:** 18 backend + 61 WASM, fmt + backend clippy + trunk build + `cargo tauri build` (MSI+NSIS). CI green PR + main.
+- must-exist 17/17, must-not-exist clean.
+- **Note:** `.dv-state.json` close edit kept local-only (direct main push blocked by PR-only policy; dv-state = local orchestration).
+- **Outage recovery:** corrupt local tag ref (41 bytes spaces) blocked fetch + reverted worktree → deleted loose ref, re-fetched, hard-reset main to origin. Remote unaffected.
