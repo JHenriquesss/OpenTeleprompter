@@ -9,7 +9,7 @@
 
 use async_trait::async_trait;
 
-use super::tauri_api::{self, AppSettingsData, ScriptData, ScriptPlaybackStateData};
+use super::tauri_api::{self, AppSettingsData, ScriptData, ScriptPlaybackStateData, UpdateInfo};
 
 /// Mockable surface over every Tauri command the frontend uses.
 #[async_trait(?Send)]
@@ -43,6 +43,11 @@ pub trait AppApi {
     async fn export_script_to_txt(&self, id: &str) -> Result<(String, String), String>;
 
     async fn get_app_version(&self) -> Result<String, String>;
+
+    /// Check for an available update. `Ok(None)` = already up to date.
+    async fn check_for_update(&self) -> Result<Option<UpdateInfo>, String>;
+    /// Download + install the pending update and relaunch.
+    async fn install_update(&self) -> Result<(), String>;
 
     #[allow(clippy::too_many_arguments)]
     async fn save_playback_state(
@@ -132,6 +137,13 @@ impl AppApi for RealTauriApi {
 
     async fn get_app_version(&self) -> Result<String, String> {
         tauri_api::get_app_version().await
+    }
+
+    async fn check_for_update(&self) -> Result<Option<UpdateInfo>, String> {
+        tauri_api::check_for_update().await
+    }
+    async fn install_update(&self) -> Result<(), String> {
+        tauri_api::install_update().await
     }
 
     async fn save_playback_state(

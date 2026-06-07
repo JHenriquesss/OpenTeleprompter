@@ -21,6 +21,11 @@ desktop.ini
 .env
 .env.local
 
+# Updater signing keys — NEVER commit the private key.
+# Only the public key is embedded (in tauri.conf.json); the private key signs
+# release bundles and lives in the GitHub Actions secret TAURI_SIGNING_PRIVATE_KEY.
+.updater-keys/
+
 # Runtime database files
 *.db
 *.db-shm

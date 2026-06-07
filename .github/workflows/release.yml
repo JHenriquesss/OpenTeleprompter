@@ -68,8 +68,10 @@ jobs:
       - name: Build Windows installer
         run: cargo tauri build
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ""
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          # Updater signing key. Empty when the secret is unset; only consumed
+          # when bundle.createUpdaterArtifacts is enabled (see docs/release.md).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Package portable ZIP
         shell: pwsh
@@ -162,6 +164,9 @@ jobs:
 
       - name: Build Linux bundle
         run: cargo tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Generate SHA256 checksums (Linux)
         run: |
@@ -229,6 +234,9 @@ jobs:
 
       - name: Build macOS bundle
         run: cargo tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Generate SHA256 checksums (macOS)
         run: |

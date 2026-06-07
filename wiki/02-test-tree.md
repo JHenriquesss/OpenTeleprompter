@@ -174,12 +174,27 @@ and `ToastState::snapshot`. Targeted failures via `MockApi::fail_on(cmd)`.
 | `export_cancel_does_not_export` | None dialog → export not called |
 | `delete_failure_keeps_row_and_errors` | fail_on delete → error toast, row kept |
 
+## UpdateBanner / self-update (Phase 14) — `src/component_tests.rs`
+
+Mount `<UpdateBanner>` against `MockApi`. `MockApi::with_update(info)` configures an
+available update; `fail_on("check_for_update"|"install_update")` injects failures.
+Banner auto-checks on mount; Install/Dismiss via `click_by_aria`/`click_text`.
+
+| Test | Proves |
+|------|--------|
+| `update_available_shows_prompt_with_version` | check called, banner shows new version + Install |
+| `update_install_success_calls_install` | Install → `install_update` once, no error toast |
+| `no_update_shows_no_prompt` | `Ok(None)` → no banner, install never called, silent |
+| `update_check_failure_shows_error_toast` | `fail_on(check)` → error toast |
+| `update_install_failure_shows_error_toast` | `fail_on(install)` → install once, error toast |
+| `update_dismiss_hides_prompt` | Dismiss → banner gone, install never called |
+
 ## Summary
 
 | Category | Count |
 |----------|-------|
 | Backend tests | 18 (5 domain + 3 import_export + 10 persistence) |
-| Frontend WASM tests | 61 (41 logic/state + 20 component integration: 11 Phase 11 + 9 Phase 12) |
+| Frontend WASM tests | 67 (41 logic/state + 26 component integration: 11 Phase 11 + 9 Phase 12 + 6 Phase 14) |
 | Architecture assertions | 4 (animation, persistence, toast position, toast timer) |
 | Manual fallback items | visual playback smoothness, theme-in-window, real OS dialogs |
-| **Total tests** | **79 (18 backend + 61 WASM)** |
+| **Total tests** | **85 (18 backend + 67 WASM)** |

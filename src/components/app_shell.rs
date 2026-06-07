@@ -4,6 +4,7 @@ use crate::components::script_editor::ScriptEditor;
 use crate::components::script_library::ScriptLibrary;
 use crate::components::settings_panel::SettingsPanel;
 use crate::components::sidebar::Sidebar;
+use crate::components::update_banner::UpdateBanner;
 use crate::state::app_state::View;
 use crate::state::toast::ToastContainer;
 use crate::state::ui_state::UiState;
@@ -40,22 +41,27 @@ pub fn AppShell() -> impl IntoView {
                 }
                 _ => {
                     view! {
-                        <Sidebar />
-                        <div style="flex: 1; overflow: hidden;">
-                            {move || match current_view() {
-                                View::Library => {
-                                    view! { <ScriptLibrary /> }.into_view()
-                                }
-                                View::Editor => {
-                                    view! { <ScriptEditor /> }.into_view()
-                                }
-                                View::Settings => {
-                                    view! { <SettingsPanel /> }.into_view()
-                                }
-                                _ => {
-                                    view! { <ScriptLibrary /> }.into_view()
-                                }
-                            }}
+                        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                            <UpdateBanner />
+                            <div style="display: flex; flex: 1; overflow: hidden;">
+                                <Sidebar />
+                                <div style="flex: 1; overflow: hidden;">
+                                    {move || match current_view() {
+                                        View::Library => {
+                                            view! { <ScriptLibrary /> }.into_view()
+                                        }
+                                        View::Editor => {
+                                            view! { <ScriptEditor /> }.into_view()
+                                        }
+                                        View::Settings => {
+                                            view! { <SettingsPanel /> }.into_view()
+                                        }
+                                        _ => {
+                                            view! { <ScriptLibrary /> }.into_view()
+                                        }
+                                    }}
+                                </div>
+                            </div>
                         </div>
                     }.into_view()
                 }

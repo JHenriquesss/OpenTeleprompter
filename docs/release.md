@@ -159,6 +159,66 @@ git push origin v0.7.0-beta.1
 ```
 ---
 
+## Auto-Update (Updater)
+
+The app ships with `tauri-plugin-updater`. On launch the frontend `UpdateBanner`
+calls the backend `check_for_update` command, which queries the updater endpoint:
+
+```
+https://github.com/JHenriquesss/OpenTeleprompter/releases/latest/download/latest.json
+```
+
+If a newer version is published there, the banner offers **Install** (download +
+install + relaunch) or **Dismiss**. Install is always user-initiated — there is
+no silent auto-install. Being up to date is silent; a failed check shows one
+toast.
+
+### Updater signature (mandatory, not OS code-signing)
+
+The updater requires its **own minisign signature** (separate from Authenticode
+/ notarization, which remain out of scope). Each updater artifact is signed with
+a private key; the app embeds the matching **public key** in
+`src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
+
+- The public key is committed (safe to publish).
+- The **private key is never committed** — it lives in `.updater-keys/`
+  (git-ignored) locally and in the GitHub Actions secret
+  `TAURI_SIGNING_PRIVATE_KEY` (with `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` for the
+  key passphrase).
+
+Generate a keypair with:
+
+```bash
+cargo tauri signer generate -w .updater-keys/openprompter.key
+```
+
+### Publishing an updater-enabled release (deferred)
+
+Updater *config* is wired, but no signed release is published yet. To enable
+end-to-end updates:
+
+1. Add repo secrets `TAURI_SIGNING_PRIVATE_KEY` and
+   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (the `release.yml` build steps already
+   pass them through; they are ignored while artifacts are disabled).
+2. Set `bundle.createUpdaterArtifacts: true` in `tauri.conf.json` so
+   `cargo tauri build` emits the signed updater bundles + `.sig` files.
+3. Upload the updater artifacts **and** a `latest.json` manifest to the GitHub
+   Release. `latest.json` shape:
+
+   ```json
+   {
+     "version": "0.13.0",
+     "notes": "Release notes",
+     "pub_date": "2026-06-07T00:00:00Z",
+     "platforms": {
+       "windows-x86_64": { "signature": "<contents of .sig>", "url": "https://github.com/.../OpenPrompter.RS_0.13.0_x64-setup.nsis.zip" }
+     }
+   }
+   ```
+
+Until then, `check_for_update` against the missing `latest.json` simply reports
+no update (or an update-check error) — the app keeps working offline.
+
 ## Unsigned Installer Warning
 
 All platform builds are **unsigned**:
@@ -258,5 +318,5 @@ The portable ZIP (`OpenPrompter.RS_portable_x64.zip`) contains only the standalo
 
 - **Code signing** — Windows Authenticode, macOS notarization
 - **Automated installer testing** — smoke tests on CI
-- **Auto-update** — Tauri updater plugin
+- **Auto-update** — `tauri-plugin-updater` wired (see [Auto-Update](#auto-update-updater)); first signed release still pending
 - **RPM package** — Linux RPM for Fedora/RHEL

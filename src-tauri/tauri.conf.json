@@ -33,5 +33,16 @@
       "icons/icon.ico",
       "icons/icon.png"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0RjlDNENBQjcyMjY3QjgKUldTNFp5SzN5c1Q1cEU3cm9jVFZmWlhhZjJBQlpYMDRTMGlVK05VU1k2NGlmM3ZmYnd6Y2cwS3EK",
+      "endpoints": [
+        "https://github.com/JHenriquesss/OpenTeleprompter/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

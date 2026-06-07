@@ -140,6 +140,27 @@ pub async fn get_app_version() -> Result<String, String> {
     invoke_tauri("get_app_version", serde_json::json!({})).await
 }
 
+/// Metadata about an available update, returned by the `check_for_update`
+/// backend command (mirrors the backend `UpdateInfo` struct).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub current_version: String,
+    pub notes: Option<String>,
+    pub date: Option<String>,
+}
+
+/// Check the configured updater endpoint. `Ok(None)` = already up to date.
+pub async fn check_for_update() -> Result<Option<UpdateInfo>, String> {
+    invoke_tauri("check_for_update", serde_json::json!({})).await
+}
+
+/// Download + install the pending update, then relaunch. On success the app
+/// restarts, so this normally does not return on the native side.
+pub async fn install_update() -> Result<(), String> {
+    invoke_tauri_unit("install_update", serde_json::json!({})).await
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScriptPlaybackStateData {
     pub script_id: String,

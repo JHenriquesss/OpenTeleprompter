@@ -48,13 +48,10 @@
 | **macOS Intel builds** | Only `aarch64` (Apple Silicon) DMG built. `macos-latest` now maps to ARM. Need `macos-13` for x86_64 or matrix with both archs |
 | **Linux RPM** | Only deb + AppImage. No RPM for Fedora/RHEL. Requires `rpmbuild` or additional CI deps |
 | **`cargo install tauri-cli` compile time** | Compiles from source on every cache-miss CI run. Adds ~10 min per platform. Could use `cargo binstall tauri-cli` for pre-built binary, or `tauri-apps/tauri-action` which handles CLI download and build in one step |
-| **Node.js 20 action deprecation** | `actions/checkout@v4` and `softprops/action-gh-release@v2` run on Node.js 20. GitHub forcing Node.js 24 by Sep 2026. Update to latest versions (v5 and v2 latest) or add `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` env |
-| **windows-latest → windows-2025** | GitHub announcing redirection of windows-latest to windows-2025-vs2026 by Jun 15, 2026. Verify release.yml still works after migration, or pin to `windows-2025` explicitly |
-| **Auto-update** | Tauri v2 updater plugin not configured. Users must manually download new releases from GitHub. Could add `tauri-plugin-updater` in a future phase |
 | **Tray icon** | No system tray. App lives in taskbar only. Could add minimize-to-tray + notification for background playback |
 | **Linux AppImage large size** | 78 MB due to bundled webkit2gtk runtime. Could strip or compress, or document minimum size expectation |
-| **Phase tags trigger release workflow** | Tags like `v0.7.0-phase7` match `v*` and create duplicate releases. Harmless but noisy. Could restrict release.yml to `v[0-9]+.[0-9]+.[0-9]+` pattern |
 | **Checksum file path cosmetics (Linux/macOS)** | SHA256SUMS files use build-directory paths. `sha256sum --check` requires same directory structure. Manual hash comparison is the primary workflow. Could fix with `sha256sum --basename` or `cd` + `sha256sum *.AppImage` |
+| **First signed updater release** | Updater is wired (Phase 14) but no signed release is published yet. Needs repo secrets `TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD`, `bundle.createUpdaterArtifacts: true`, and a `latest.json` manifest on a public release. See docs/release.md → Auto-Update |
 
 ## Resolved
 
@@ -199,3 +196,18 @@
 | Error handling UX | ToastState + ToastContainer: 4 levels, auto-dismiss 4s, centralized in all components. Jump feedback migrated to toasts. Settings inline errors removed |
 | Frontend WASM test harness | 11 WASM tests running via `wasm-pack test --headless --chrome`. CI step added. Pure-logic modules (speed, mirror) tested |
 | Component tests blocked | Component integration tests still blocked on Tauri API trait + mock refactor (docs/frontend-testing.md has roadmap, ~1250 lines estimate) |
+
+### Phase 13 (CI runner & action maintenance)
+
+| Thread | Resolution |
+|--------|-----------|
+| windows-latest → windows-2025 | `release.yml` Windows job pinned to `windows-2025`. Verified via `workflow_dispatch` run on main (build-windows green) |
+| Node.js 20 action deprecation | `softprops/action-gh-release` v2→v3 (Node 24); `actions/checkout@v5` already Node 24; `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` bridges `Swatinem/rust-cache@v2`. No Node 20 warnings in verification run |
+| Phase tags trigger release workflow | Push trigger narrowed to public semver (`v[0-9]+.[0-9]+.[0-9]+` + `-beta.[0-9]+`); phase tags no longer fire `release.yml`. Added `workflow_dispatch` for build verification without publishing |
+
+### Phase 14 (self-update)
+
+| Thread | Resolution |
+|--------|-----------|
+| Auto-update | `tauri-plugin-updater` wired: backend `check_for_update`/`install_update` (two-step via `PendingUpdate` state), `plugins.updater` config (pubkey + GitHub `latest.json` endpoint), `UpdateBanner` prompt. 6 WASM tests. First *signed release* deferred (see open threads above) |
+| Updater signing key | Minisign keypair generated; public key embedded in `tauri.conf.json`, private key git-ignored + documented as GH secret. `release.yml` passes the secret through |

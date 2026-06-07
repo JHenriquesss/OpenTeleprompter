@@ -51,10 +51,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(script_handler)
         .manage(settings_handler)
         .manage(playback_state_handler)
         .manage(import_export_handler)
+        .manage(commands::updater::PendingUpdate::default())
         .invoke_handler(tauri::generate_handler![
             commands::scripts::create_script,
             commands::scripts::update_script,
@@ -76,6 +78,8 @@ pub fn run() {
             commands::import_export::read_text_file,
             commands::import_export::export_script_to_txt_file,
             commands::system::get_app_version,
+            commands::updater::check_for_update,
+            commands::updater::install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

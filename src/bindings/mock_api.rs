@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 
 use super::app_api::AppApi;
-use super::tauri_api::{AppSettingsData, ScriptData, ScriptPlaybackStateData};
+use super::tauri_api::{AppSettingsData, ScriptData, ScriptPlaybackStateData, UpdateInfo};
 
 /// Default settings mirroring the backend defaults (used by `reset_settings`
 /// and as the initial mock state).
@@ -46,6 +46,8 @@ struct MockState {
     call_log: Vec<String>,
     /// `(script_id, path)` recorded for each successful export.
     exports: Vec<(String, String)>,
+    /// Update returned by `check_for_update` (`None` = already up to date).
+    update: Option<UpdateInfo>,
 }
 
 pub struct MockApi {
@@ -74,6 +76,7 @@ impl MockApi {
                 fail_commands: Vec::new(),
                 call_log: Vec::new(),
                 exports: Vec::new(),
+                update: None,
             }),
         }
     }
@@ -122,6 +125,12 @@ impl MockApi {
     /// Force every command to fail — for error-handling/toast tests.
     pub fn failing(self, msg: &str) -> Self {
         self.inner.borrow_mut().force_error = Some(msg.to_string());
+        self
+    }
+
+    /// Configure `check_for_update` to report this update as available.
+    pub fn with_update(self, info: UpdateInfo) -> Self {
+        self.inner.borrow_mut().update = Some(info);
         self
     }
 
@@ -387,6 +396,18 @@ impl AppApi for MockApi {
         self.log("get_app_version");
         self.check_error()?;
         Ok(self.inner.borrow().version.clone())
+    }
+
+    async fn check_for_update(&self) -> Result<Option<UpdateInfo>, String> {
+        self.log("check_for_update");
+        self.check_error()?;
+        Ok(self.inner.borrow().update.clone())
+    }
+
+    async fn install_update(&self) -> Result<(), String> {
+        self.log("install_update");
+        self.check_error()?;
+        Ok(())
     }
 
     async fn save_playback_state(
