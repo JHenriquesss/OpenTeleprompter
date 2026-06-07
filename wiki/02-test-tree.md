@@ -138,7 +138,7 @@ All tests use `wasm_bindgen_test::wasm_bindgen_test` attribute. Speed tests need
 | Category | Count |
 |----------|-------|
 | Backend tests | 18 (5 domain + 3 import_export + 10 persistence) |
-| Frontend WASM tests | 41 (5 speed + 6 mirror + 8 toast + 14 playback + 8 ui_state) |
+| Frontend WASM tests | 42 (5 speed + 6 mirror + 8 toast + 14 playback + 9 ui_state) |
 | Architecture assertions | 4 (animation, persistence, toast position, toast timer) |
 | Manual fallback items | 17 (documented in smoke-phase10.ps1) |
-| **Total tests** | **59 (18 backend + 41 WASM)** |
+| **Total tests** | **60 (18 backend + 42 WASM)** |

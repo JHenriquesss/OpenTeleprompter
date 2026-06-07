@@ -1,6 +1,6 @@
 # OpenPrompter RS
 
-[![CI](https://github.com/JHenriquesss/Teleprompter/actions/workflows/ci.yml/badge.svg)](https://github.com/JHenriquesss/Teleprompter/actions/workflows/ci.yml)
+[![CI](https://github.com/JHenriquesss/OpenTeleprompter/actions/workflows/ci.yml/badge.svg)](https://github.com/JHenriquesss/OpenTeleprompter/actions/workflows/ci.yml)
 
 A lightweight, local-first, offline desktop teleprompter application for Windows, macOS, and Linux.
 
@@ -70,11 +70,11 @@ Screenshots temporarily removed while demo images are regenerated with synthetic
 
 ## Download and Install
 
-[![Latest Release](https://img.shields.io/github/v/release/JHenriquesss/Teleprompter?include_prereleases&label=download&logo=github)](https://github.com/JHenriquesss/Teleprompter/releases)
+[![Latest Release](https://img.shields.io/github/v/release/JHenriquesss/OpenTeleprompter?include_prereleases&label=download&logo=github)](https://github.com/JHenriquesss/OpenTeleprompter/releases)
 
 **OpenPrompter RS is free, open-source, and works entirely offline.** No account. No login. No payment. No cloud. No telemetry.
 
-The current public beta is **[v0.9.0-beta.1](https://github.com/JHenriquesss/Teleprompter/releases/tag/v0.9.0-beta.1)**.
+The current public beta is **[v0.10.0-beta.1](https://github.com/JHenriquesss/OpenTeleprompter/releases/tag/v0.10.0-beta.1)**.
 
 | Platform | Recommended download | Also available |
 |----------|---------------------|----------------|
@@ -105,7 +105,7 @@ chmod +x *.AppImage && ./OpenPrompter.RS_*.AppImage
 | Linux | ⚠️ Beta | CI only | AppImage + deb generated. Community testing welcome. |
 | macOS | ⚠️ Beta | CI only | DMG generated (ARM). Community testing welcome. |
 
-Windows is the primary development platform and receives the most manual testing. Linux and macOS builds are generated automatically by CI for every release but have **not been manually tested on real hardware**. If you try them and run into issues, please [open an issue](https://github.com/JHenriquesss/Teleprompter/issues) — your feedback helps us improve cross-platform support.
+Windows is the primary development platform and receives the most manual testing. Linux and macOS builds are generated automatically by CI for every release but have **not been manually tested on real hardware**. If you try them and run into issues, please [open an issue](https://github.com/JHenriquesss/OpenTeleprompter/issues) — your feedback helps us improve cross-platform support.
 
 ## Building from Source
 

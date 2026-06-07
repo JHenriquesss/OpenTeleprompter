@@ -23,7 +23,7 @@ It does NOT mean the app is unsafe.
 Click "More info" then "Run anyway" to proceed.
 
 This app is 100% open-source.
-Source code: https://github.com/JHenriquesss/Teleprompter
+Source code: https://github.com/JHenriquesss/OpenTeleprompter
 
 No account. No cloud. No telemetry. No payment. Free forever.
 

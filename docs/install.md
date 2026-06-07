@@ -68,7 +68,7 @@ Both commands check every file listed in the checksum file and print "OK" for ea
 
 ### Option 1: Setup Installer (recommended for most users)
 
-1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/Teleprompter/releases).
+1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/OpenTeleprompter/releases).
 2. Find the latest release (look for `v0.7.0-beta.1` or newer).
 3. Download the file ending in `-setup.exe` (for example, `OpenPrompter.RS_0.7.0_x64-setup.exe`).
 4. Double-click the downloaded file to run the installer.
@@ -85,7 +85,7 @@ To continue:
 - Click **Run anyway**.
 - The installer will proceed normally.
 
-The app is 100% open-source. You can [inspect the source code](https://github.com/JHenriquesss/Teleprompter) yourself.
+The app is 100% open-source. You can [inspect the source code](https://github.com/JHenriquesss/OpenTeleprompter) yourself.
 
 ### Option 2: MSI Installer (for system administrators)
 
@@ -110,7 +110,7 @@ Your scripts and settings are saved in the same folder. Nothing is written to th
 
 ### Option 1: AppImage (recommended — works on any Linux distribution)
 
-1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/Teleprompter/releases).
+1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/OpenTeleprompter/releases).
 2. Find the latest release.
 3. Download the `.AppImage` file (for example, `OpenPrompter.RS_0.7.0_amd64.AppImage`).
 4. Open a terminal in the download folder.
@@ -150,7 +150,7 @@ If you use Debian, Ubuntu, or a derivative (like Mint, Pop!_OS, etc.):
 
 ## macOS
 
-1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/Teleprompter/releases).
+1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/OpenTeleprompter/releases).
 2. Find the latest release.
 3. Download the `.dmg` file (for example, `OpenPrompter.RS_0.7.0_aarch64.dmg`).
 4. Double-click the `.dmg` file to open it.
@@ -179,7 +179,7 @@ After that, the app will open normally.
 
 Yes. Here is why you can trust OpenPrompter RS:
 
-- **Open source** — The entire source code is public on [GitHub](https://github.com/JHenriquesss/Teleprompter). Anyone can review it.
+- **Open source** — The entire source code is public on [GitHub](https://github.com/JHenriquesss/OpenTeleprompter). Anyone can review it.
 - **No cloud** — The app runs entirely offline. Your scripts never leave your computer.
 - **No accounts** — No registration, no login, no account creation.
 - **No telemetry** — The app does not track you, collect data, or phone home.
@@ -200,4 +200,4 @@ The unsigned warning from your operating system is simply because we haven't pai
 
 ## Still have questions?
 
-Open an issue on [GitHub](https://github.com/JHenriquesss/Teleprompter/issues) — we are happy to help.
+Open an issue on [GitHub](https://github.com/JHenriquesss/OpenTeleprompter/issues) — we are happy to help.

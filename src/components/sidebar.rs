@@ -5,7 +5,7 @@ use leptos::*;
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let app_state = use_context::<AppState>().expect("AppState not provided");
-    let (version, set_version) = create_signal("0.9.0".to_string());
+    let (version, set_version) = create_signal("0.10.0".to_string());
 
     create_effect(move |_| {
         spawn_local(async move {
