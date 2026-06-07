@@ -698,3 +698,29 @@ After containment, created a new clean public repository:
 - must-exist 17/17, must-not-exist clean.
 - **Note:** `.dv-state.json` close edit kept local-only (direct main push blocked by PR-only policy; dv-state = local orchestration).
 - **Outage recovery:** corrupt local tag ref (41 bytes spaces) blocked fetch + reverted worktree → deleted loose ref, re-fetched, hard-reset main to origin. Remote unaffected.
+
+## Phase 13: CI Runner & Action Maintenance
+
+**Scope:** future-proof the release pipeline before GitHub migrates the `windows-latest` label + deprecates Node 20 actions. Infra only, no app change.
+**Merged:** `6bc47e6` on main · PR #5 · **no phase tag** (phase tags would now trigger `release.yml`; see below).
+
+- `release.yml` Windows job pinned `windows-latest` → `windows-2025`.
+- `softprops/action-gh-release` v2 → v3 (Node 24) in all 3 jobs.
+- `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` env bridge (ci.yml + release.yml) for `Swatinem/rust-cache@v2` (no Node 24 release yet).
+- `release.yml` gains `workflow_dispatch`; push trigger narrowed to public semver (`v[0-9]+.[0-9]+.[0-9]+` + `-beta.[0-9]+`) so internal phase tags no longer fire a release build.
+- Publish steps tag-guarded (`startsWith(github.ref, 'refs/tags/')`) + "Show release mode" diagnostic step per job.
+- **Verification:** `workflow_dispatch` run `27099586897` on main — all 3 jobs success (build-windows on windows-2025), no Node 20 deprecation warnings, `gh release list` unchanged 3→3 (no publish on non-tag run).
+- Verification-gated infra phase (no unit tests). must-exist 9/9, must-not-exist clean.
+
+## Phase 14: Self-Update (`tauri-plugin-updater`)
+
+**Scope:** in-app update check + prompt + install against GitHub Releases. Updater *config + plumbing* only; no signed release published this phase (deferred to a real release with the signing secret).
+**Branch:** `phase14-updater` · PR pending.
+
+- **Backend:** `tauri-plugin-updater` dep + plugin registered in `lib.rs`; `updater:default` capability. New `commands/updater.rs`: `check_for_update` (queries endpoint, stashes non-serializable `Update` in `PendingUpdate` managed `Mutex<Option<Update>>` state, returns serializable `UpdateInfo`) + `install_update` (takes stashed handle, `download_and_install`, then `app.restart()`). Two-step so the UI can prompt between detect and install.
+- **Config:** `tauri.conf.json` `plugins.updater` — real minisign `pubkey` (committed), endpoint `releases/latest/download/latest.json`, Windows `installMode: passive`.
+- **Signing key:** keypair generated via `cargo tauri signer generate`. Public key embedded; **private key git-ignored** (`.updater-keys/`) + documented as GH secret `TAURI_SIGNING_PRIVATE_KEY`. `release.yml` build steps pass the secret through (ignored until `bundle.createUpdaterArtifacts` is enabled).
+- **Frontend:** `UpdateInfo` type + `check_for_update`/`install_update` invoke wrappers; `AppApi` trait methods + `RealTauriApi` delegate + `MockApi` (`with_update`, configurable failure). New `UpdateBanner` component — auto-checks on mount (silent when up to date, one error toast on check failure), renders **Install**/**Dismiss** when an update exists; install is user-initiated only. Wired into `AppShell` above sidebar+content (absent in fullscreen prompter).
+- **6 new WASM tests:** available→prompt+version, install→success (no error toast), no-update→no prompt, check-failure→error toast, install-failure→error toast, dismiss→prompt gone. [[02-test-tree.md]]
+- **Validation:** 18 backend + 67 WASM, fmt + backend clippy `-D warnings` + trunk build. CI green.
+- **Deferred (documented in docs/release.md):** first signed release = add repo secrets + flip `createUpdaterArtifacts` + upload `latest.json`. Until then `check_for_update` against the missing manifest reports no update; app works offline.

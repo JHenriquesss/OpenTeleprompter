@@ -24,12 +24,13 @@ use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::*;
 
 use crate::bindings::mock_api::MockApi;
-use crate::bindings::tauri_api::{ScriptData, ScriptPlaybackStateData};
+use crate::bindings::tauri_api::{ScriptData, ScriptPlaybackStateData, UpdateInfo};
 use crate::bindings::{ApiCtx, AppApi};
 use crate::components::prompter_view::PrompterView;
 use crate::components::script_editor::ScriptEditor;
 use crate::components::script_library::ScriptLibrary;
 use crate::components::settings_panel::SettingsPanel;
+use crate::components::update_banner::UpdateBanner;
 use crate::state::app_state::AppState;
 use crate::state::playback_state::PlaybackState;
 use crate::state::toast::{ToastLevel, ToastState};
@@ -597,4 +598,144 @@ async fn delete_failure_keeps_row_and_errors() {
         "row was removed"
     );
     assert_toast_contains_error(&toast);
+}
+
+// ---- Phase 14: updater (check / prompt / install) ----------------------
+//
+// UpdateBanner auto-checks for an update on mount through AppApi. If an update
+// is available it renders a prompt with Install / Dismiss. These reference test
+// support that does not exist yet (RED): UpdateInfo, MockApi::with_update,
+// and the UpdateBanner component itself.
+
+fn mk_update(version: &str) -> UpdateInfo {
+    UpdateInfo {
+        version: version.to_string(),
+        current_version: "0.10.0".to_string(),
+        notes: Some(format!("Release notes for {version}")),
+        date: Some("2026-06-01".to_string()),
+    }
+}
+
+/// Mount `<UpdateBanner>` with the given mock API + toast state.
+fn mount_banner(api: ApiCtx, toast: ToastState) -> web_sys::HtmlElement {
+    mount(move || {
+        provide_context::<ApiCtx>(api);
+        provide_context(toast);
+        view! { <UpdateBanner /> }
+    })
+}
+
+#[wasm_bindgen_test]
+async fn update_available_shows_prompt_with_version() {
+    let mock = Rc::new(MockApi::new().with_update(mk_update("0.11.0")));
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_banner(api, toast);
+    settle().await;
+
+    assert!(mock.was_called("check_for_update"));
+    let txt = text_of(&container);
+    assert!(txt.contains("0.11.0"), "banner missing new version: {txt}");
+    assert!(
+        click_text(&container, "Install") || click_by_aria(&container, "Install update"),
+        "Install button missing: {txt}"
+    );
+}
+
+#[wasm_bindgen_test]
+async fn update_install_success_calls_install() {
+    let mock = Rc::new(MockApi::new().with_update(mk_update("0.11.0")));
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_banner(api, toast);
+    settle().await;
+
+    assert!(
+        click_by_aria(&container, "Install update") || click_text(&container, "Install"),
+        "Install button missing"
+    );
+    settle().await;
+
+    assert_eq!(mock.call_count("install_update"), 1);
+    assert_no_error_toast(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn no_update_shows_no_prompt() {
+    let mock = Rc::new(MockApi::new()); // with_update never set -> None
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_banner(api, toast);
+    settle().await;
+
+    assert!(mock.was_called("check_for_update"));
+    let txt = text_of(&container);
+    assert!(
+        !txt.contains("Install") && !txt.contains("available"),
+        "unexpected update prompt when no update: {txt}"
+    );
+    assert!(mock.was_not_called("install_update"));
+    assert_no_error_toast(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn update_check_failure_shows_error_toast() {
+    let mock = Rc::new(MockApi::new().fail_on("check_for_update"));
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let _container = mount_banner(api, toast);
+    settle().await;
+
+    assert!(mock.was_called("check_for_update"));
+    assert_toast_contains_error(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn update_install_failure_shows_error_toast() {
+    let mock = Rc::new(
+        MockApi::new()
+            .with_update(mk_update("0.11.0"))
+            .fail_on("install_update"),
+    );
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_banner(api, toast);
+    settle().await;
+
+    assert!(
+        click_by_aria(&container, "Install update") || click_text(&container, "Install"),
+        "Install button missing"
+    );
+    settle().await;
+
+    assert_eq!(mock.call_count("install_update"), 1);
+    assert_toast_contains_error(&toast);
+}
+
+#[wasm_bindgen_test]
+async fn update_dismiss_hides_prompt() {
+    let mock = Rc::new(MockApi::new().with_update(mk_update("0.11.0")));
+    let api: ApiCtx = mock.clone();
+    let toast = ToastState::new();
+
+    let container = mount_banner(api, toast);
+    settle().await;
+    assert!(text_of(&container).contains("0.11.0"));
+
+    assert!(
+        click_by_aria(&container, "Dismiss update") || click_text(&container, "Dismiss"),
+        "Dismiss button missing"
+    );
+    settle().await;
+
+    assert!(
+        !text_of(&container).contains("0.11.0"),
+        "prompt still visible after dismiss"
+    );
+    assert!(mock.was_not_called("install_update"));
 }

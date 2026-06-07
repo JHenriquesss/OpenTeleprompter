@@ -6,3 +6,4 @@ pub mod script_library;
 pub mod settings_panel;
 pub mod sidebar;
 pub mod toolbar;
+pub mod update_banner;

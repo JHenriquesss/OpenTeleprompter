@@ -258,4 +258,13 @@ Two repos after privacy incident (2026-06-07):
 
 - Flow: `app.rs` provides `Rc::new(RealTauriApi)`; components do `use_context::<ApiCtx>()` → `api.<cmd>().await`. Tests provide `Rc::new(MockApi)`.
 - `Rc<dyn AppApi>` is not `Copy` → handlers used >once / in reactive `Fn` closures / list `.map` are wrapped in Leptos `Callback` (Copy); single-use handlers clone the `Rc` inline. See [[04-decisions.md]].
-- Component tests (`src/component_tests.rs`, Phase 11–12): mount real components into a detached DOM via `mount_to`, drive real DOM clicks (`click_by_title`/`click_by_aria`/`click_text`), assert via MockApi (`call_count`/`was_not_called`/`exported`/`scripts`) + `ToastState::snapshot()`. Async settles via bounded `tick`/`settle` poll. [[02-test-tree.md]]
+- Component tests (`src/component_tests.rs`, Phase 11–12, 14): mount real components into a detached DOM via `mount_to`, drive real DOM clicks (`click_by_title`/`click_by_aria`/`click_text`), assert via MockApi (`call_count`/`was_not_called`/`exported`/`scripts`/`with_update`) + `ToastState::snapshot()`. Async settles via bounded `tick`/`settle` poll. [[02-test-tree.md]]
+
+## Self-update (Phase 14)
+
+`tauri-plugin-updater` drives in-app updates against GitHub Releases:
+
+- **Backend** (`src-tauri/src/commands/updater.rs`): two-step `check_for_update` → `install_update`. The non-serializable `Update` handle is stashed in `PendingUpdate` (`Mutex<Option<Update>>`) managed state between the calls; only the serializable `UpdateInfo` crosses IPC. `install_update` downloads, installs, then `app.restart()`.
+- **Config** (`tauri.conf.json` `plugins.updater`): embedded minisign `pubkey`, endpoint `releases/latest/download/latest.json`, Windows `installMode: passive`. Private signing key is git-ignored (`.updater-keys/`) + lives in GH secret `TAURI_SIGNING_PRIVATE_KEY`.
+- **Frontend**: `UpdateBanner` (`src/components/update_banner.rs`) auto-checks on mount through `ApiCtx`; silent when up to date, error toast on check failure, Install/Dismiss when an update exists. Wired into `AppShell` above sidebar+content (hidden in fullscreen prompter). Install is user-initiated only — no silent auto-install.
+- First *signed release* is deferred (needs `bundle.createUpdaterArtifacts` + secrets + a `latest.json`); see docs/release.md → Auto-Update and [[06-open-threads.md]].
