@@ -287,6 +287,10 @@ After building or downloading a release, verify:
 - [ ] Native import/export dialogs work
 - [ ] Delete confirmation works
 - [ ] Theme toggle works
+- [ ] Tray icon appears; left-click toggles the window show/hide
+- [ ] Tray right-click menu: Show / Hide / Quit work
+- [ ] Window X hides to tray (app keeps running) + one-time "running in tray" toast
+- [ ] Tray → Quit exits fully (no orphaned process)
 - [ ] App uninstalls cleanly
 - [ ] No private test data is bundled
 

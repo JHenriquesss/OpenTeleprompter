@@ -6,7 +6,7 @@ use crate::components::settings_panel::SettingsPanel;
 use crate::components::sidebar::Sidebar;
 use crate::components::update_banner::UpdateBanner;
 use crate::state::app_state::View;
-use crate::state::toast::ToastContainer;
+use crate::state::toast::{ToastContainer, ToastState};
 use crate::state::ui_state::UiState;
 use leptos::*;
 
@@ -16,6 +16,7 @@ pub fn AppShell() -> impl IntoView {
         use_context::<crate::state::app_state::AppState>().expect("AppState not provided");
     let ui = use_context::<UiState>().expect("UiState not provided");
     let api = use_context::<ApiCtx>().expect("AppApi not provided");
+    let toast = use_context::<ToastState>().expect("ToastState not provided");
 
     let current_view = move || app_state.view.get();
 
@@ -25,6 +26,16 @@ pub fn AppShell() -> impl IntoView {
             if let Ok(s) = api.get_settings().await {
                 ui.theme.set(s.theme);
             }
+        });
+    });
+
+    // One-time hint when the window is hidden to the tray (Phase 16). Tauri's
+    // `event.once` fires at most once per app run.
+    create_effect(move |_| {
+        crate::bindings::tauri_api::on_close_to_tray_once(move || {
+            toast.add_info(
+                "OpenPrompter is still running in the system tray. Use the tray icon to quit.",
+            );
         });
     });
 

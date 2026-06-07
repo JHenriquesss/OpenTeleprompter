@@ -46,7 +46,6 @@
 | **Unsigned Windows installers** | Authenticode signing not configured. Users see SmartScreen warning on download/install. Requires code signing certificate (paid, org validation). Will be addressed in a future phase. SmartScreen can be bypassed via "More info → Run anyway" |
 | **Unsigned macOS builds** | Gatekeeper blocks unsigned app on first launch. Requires Apple Developer Program enrollment + notarization. Workaround: right-click → Open |
 | **`cargo install tauri-cli` compile time** | Compiles from source on every cache-miss CI run. Adds ~10 min per platform. Could use `cargo binstall tauri-cli` for pre-built binary, or `tauri-apps/tauri-action` which handles CLI download and build in one step |
-| **Tray icon** | No system tray. App lives in taskbar only. Could add minimize-to-tray + notification for background playback |
 | **Linux AppImage large size** | 78 MB due to bundled webkit2gtk runtime. Could strip or compress, or document minimum size expectation |
 | **Checksum file path cosmetics (Linux/macOS)** | SHA256SUMS files use build-directory paths. `sha256sum --check` requires same directory structure. Manual hash comparison is the primary workflow. Could fix with `sha256sum --basename` or `cd` + `sha256sum *.AppImage` |
 | **First signed updater release** | Updater is wired (Phase 14) but no signed release is published yet. Needs repo secrets `TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD`, `bundle.createUpdaterArtifacts: true`, and a `latest.json` manifest on a public release. See docs/release.md → Auto-Update |
@@ -217,3 +216,9 @@
 |--------|-----------|
 | macOS Intel builds | `build-macos` matrixed over `macos-13` (native Intel x86_64) + `macos-14` (native aarch64). Per-arch DMG + `SHA256SUMS-macos-<arch>.txt`. No cross-compile |
 | Linux RPM | Added `bundle/rpm/*.rpm` (from Tauri's `"all"` target, pure-Rust builder — no `rpmbuild`) to Linux checksum + upload globs. Fedora/RHEL/openSUSE covered |
+
+### Phase 16 (system tray)
+
+| Thread | Resolution |
+|--------|-----------|
+| Tray icon | `src-tauri/src/tray.rs` + `lib.rs`: tray icon with Show/Hide/Quit menu, left-click toggles window, X hides-to-tray (Quit = full exit), one-time hint toast via `event.once`. `tray-icon` cargo feature (no new crate). Pure `tray_action` mapper unit-tested; runtime manual-verified |
