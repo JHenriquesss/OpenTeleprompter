@@ -4,11 +4,14 @@
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| Windows (x64) | ✅ Supported | MSI + NSIS installer |
-| Linux (x86_64) | ✅ Supported | AppImage + deb package |
-| macOS (x64, ARM) | ✅ Supported | DMG (unsigned) |
+| Windows (x64) | ✅ Supported | MSI + NSIS installer + portable ZIP |
+| Linux (x86_64) | ✅ Supported | AppImage + deb + RPM |
+| macOS (Apple Silicon) | ✅ Supported | DMG (unsigned), built on `macos-14` |
+| macOS (Intel x86_64) | ✅ Supported | DMG (unsigned), built natively on `macos-13` |
 
-Current builds target **Windows x64**, **Linux x86_64**, and **macOS** (Apple Silicon / Intel).
+Current builds target **Windows x64**, **Linux x86_64** (AppImage/deb/RPM), and
+**macOS** on both **Apple Silicon (aarch64)** and **Intel (x86_64)** — each macOS
+arch is built natively on its own runner (no cross-compile).
 
 ### CI / runner maintenance
 
@@ -72,7 +75,8 @@ After a successful build, artifacts are written to `target/release/bundle/`.
 | Windows | Portable ZIP | `target/release/OpenPrompter.RS_portable_x64.zip` | No-install archive (EXE + README) |
 | Linux | AppImage | `target/release/bundle/appimage/*.AppImage` | Portable AppImage |
 | Linux | deb | `target/release/bundle/deb/*.deb` | Debian/Ubuntu package |
-| macOS | DMG | `target/release/bundle/dmg/*.dmg` | macOS disk image |
+| Linux | RPM | `target/release/bundle/rpm/*.rpm` | Fedora/RHEL/openSUSE package |
+| macOS | DMG | `target/release/bundle/dmg/*.dmg` | macOS disk image (per-arch: built on `macos-13` for x86_64, `macos-14` for aarch64) |
 
 ---
 
@@ -94,8 +98,8 @@ The release workflow (`.github/workflows/release.yml`) runs automatically when a
 5. Runs `cargo tauri build` on each platform
 6. Uploads generated artifacts to the GitHub Release:
    - **Windows**: MSI, NSIS installer, and portable ZIP
-   - **Linux**: AppImage + deb package
-   - **macOS**: DMG disk image
+   - **Linux**: AppImage + deb + RPM
+   - **macOS**: DMG (Intel x86_64 on `macos-13` + Apple Silicon aarch64 on `macos-14`)
 7. Marks the release as a pre-release (for beta/RC tags)
 
 ### SHA256 Checksums
@@ -105,8 +109,9 @@ Each platform job generates a per-platform checksum file:
 | File | Contains |
 |------|----------|
 | `SHA256SUMS-windows.txt` | MSI, NSIS, portable ZIP |
-| `SHA256SUMS-linux.txt` | AppImage, deb |
-| `SHA256SUMS-macos.txt` | DMG |
+| `SHA256SUMS-linux.txt` | AppImage, deb, RPM |
+| `SHA256SUMS-macos-x64.txt` | DMG (Intel x86_64) |
+| `SHA256SUMS-macos-aarch64.txt` | DMG (Apple Silicon) |
 
 Format (same as `sha256sum`):
 

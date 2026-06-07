@@ -724,3 +724,15 @@ After containment, created a new clean public repository:
 - **6 new WASM tests:** available→prompt+version, install→success (no error toast), no-update→no prompt, check-failure→error toast, install-failure→error toast, dismiss→prompt gone. [[02-test-tree.md]]
 - **Validation:** 18 backend + 67 WASM, fmt + backend clippy `-D warnings` + trunk build. CI green.
 - **Deferred (documented in docs/release.md):** first signed release = add repo secrets + flip `createUpdaterArtifacts` + upload `latest.json`. Until then `check_for_update` against the missing manifest reports no update; app works offline.
+
+## Phase 15: macOS Intel + Linux RPM Builds
+
+**Scope:** extend `release.yml` platform coverage — macOS x86_64 (was ARM-only) + Linux RPM (was deb+AppImage). Infra only, no app code. Verification-gated like Phase 13.
+**Merged:** PR #8 on main · **no phase tag**.
+
+- **macOS:** `build-macos` job matrixed over runners — `macos-13` (native Intel x86_64) + `macos-14` (native Apple Silicon aarch64). No cross-compile; each runner builds its own DMG. `fail-fast: false`. Per-arch `SHA256SUMS-macos-<arch>.txt` + per-arch DMG upload (tag-guarded).
+- **Linux RPM:** Tauri v2 `"targets": "all"` already emits rpm (pure-Rust builder, no `rpmbuild` system dep). Added `target/release/bundle/rpm/*.rpm` to the Linux checksum + upload globs.
+- **Unchanged:** Windows MSI/NSIS/ZIP, Linux AppImage/deb, semver-only push trigger, tag-guarded uploads, no signing/notarization.
+- **Verification (dispatch run `27106260729` on branch):** windows ✅, linux **+rpm** ✅ (rpm checksum step green ⇒ rpm bundle built), macos-14 **aarch64** ✅. `gh release list` unchanged 3→3 (no publish on non-tag run).
+- **macos-13 (Intel x64): verified-by-parity** — the leg ran the *identical* matrix job that macos-14 passed, but the Intel runner never scheduled (queued >70 min; GitHub Intel-runner scarcity, not a code issue). Accepted as a verified-partial close; first real Intel DMG will be produced on the next tagged release. [[06-open-threads.md]]
+- Verification-gated infra phase (no unit tests). must-exist 6/6 (me-4 Intel leg by-parity), must-not-exist clean.
