@@ -78,6 +78,7 @@ pub fn ConfirmModal(
                         </p>
                         <div style="display: flex; gap: 10px; justify-content: flex-end;">
                             <button
+                                aria-label="Cancel"
                                 on:click=move |_| trigger_cancel.set(true)
                                 style="
                                     padding: 10px 20px; border: 1px solid var(--button-ghost-border); border-radius: 8px;
@@ -88,6 +89,7 @@ pub fn ConfirmModal(
                                 Cancel
                             </button>
                             <button
+                                aria-label="Confirm"
                                 on:click=move |_| trigger_confirm.set(true)
                                 style="
                                     padding: 10px 20px; border: none; border-radius: 8px;

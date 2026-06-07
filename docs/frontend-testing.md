@@ -26,10 +26,11 @@ wasm-pack test --headless --chrome
 | `playback_state` | `src/state/playback_state.rs` | 14 | initial state, toggle_play, restart, speed up/down/set, jump (small/big), clamps |
 | `ui_state` | `src/state/ui_state.rs` | 8 | initial state, font size up/down/clamps, toggle mirror/reading_guide/shortcut_help |
 
-### Component integration tests (11 tests) — `src/component_tests.rs`
+### Component integration tests (20 tests) — `src/component_tests.rs`
 
-Added in Phase 11. Components are mounted into a detached DOM node and driven by
-`MockApi` (no Tauri, no `invoke`, no native dialogs). Total WASM tests: **52**.
+Added in Phase 11 (11) and Phase 12 (9). Components are mounted into a detached
+DOM node and driven by `MockApi` (no Tauri, no `invoke`, no native dialogs).
+Total WASM tests: **61**.
 
 | Test | What it proves |
 |------|----------------|
@@ -43,6 +44,27 @@ Added in Phase 11. Components are mounted into a detached DOM node and driven by
 | `settings_panel_loads_through_mock` | `<SettingsPanel>` calls `get_settings` on mount |
 | `script_editor_loads_selected_script` | `<ScriptEditor>` calls `get_script` for selected id |
 | `prompter_view_shows_resume_dialog_when_state_exists` | `<PrompterView>` loads playback + shows Resume dialog |
+
+#### Phase 12 — ScriptLibrary action flows (9 tests)
+
+Drive real DOM clicks on the rendered buttons (`click_by_title` for row actions,
+`click_by_aria` for the ConfirmModal, `click_text` for Import) and assert via
+`MockApi` (`call_count`, `was_not_called`, `exported`, `scripts`) and
+`ToastState::snapshot` (`assert_toast_contains_success/error`, `assert_no_error_toast`).
+Targeted failures use `MockApi::fail_on(cmd)` so a flow can reach its intended
+failure point past earlier successful calls (e.g. import = dialog → read → import).
+
+| Test | What it proves |
+|------|----------------|
+| `import_success_creates_script_with_content` | Import creates a script with filename-derived title + file body; success toast |
+| `export_success_exports_correct_script` | Export calls the command once with the correct script id (`exported()`); success toast |
+| `duplicate_creates_copy` | Duplicate adds one script; success toast |
+| `delete_confirm_full_sequence` | Delete not called before confirm; called exactly once after; row removed; success toast |
+| `delete_cancel_keeps_row` | Cancel in modal → delete never called; row retained; no error toast |
+| `import_cancel_does_nothing` | Cancelled open dialog (None) → import not called; no error toast |
+| `import_failure_shows_error_toast` | `fail_on("import_script_from_txt")` → error toast; no script added |
+| `export_cancel_does_not_export` | Cancelled save dialog (None) → export not called; no error toast |
+| `delete_failure_keeps_row_and_errors` | `fail_on("delete_script")` → error toast; row retained |
 
 ### Architecture assertions (verified by smoke-phase10.ps1)
 
@@ -73,7 +95,7 @@ cannot `invoke` Tauri commands.
 |------|------|
 | `tauri_api.rs` | Raw `invoke` wrappers + typed data structs (`ScriptData`, `AppSettingsData`, `ScriptPlaybackStateData`). Unchanged behavior. |
 | `app_api.rs` | `AppApi` trait (`#[async_trait(?Send)]`) over every command, plus `RealTauriApi` which delegates to the `tauri_api` free functions. |
-| `mock_api.rs` | `MockApi` — in-memory `RefCell` store with builders (`with_scripts`, `with_settings`, `with_playback`, `failing`, …), a call log (`was_called`), and error injection. `#[cfg(test)]` only, so it never ships in the production bundle. |
+| `mock_api.rs` | `MockApi` — in-memory `RefCell` store with builders (`with_scripts`, `with_settings`, `with_playback`, `with_open_dialog`, `with_save_dialog`, `with_file`), a call log (`was_called`/`was_not_called`/`call_count`), state snapshots (`scripts`, `exported`), and error injection — global `failing(msg)` or targeted `fail_on(cmd)`. `#[cfg(test)]` only, so it never ships in the production bundle. |
 | `mod.rs` | `pub type ApiCtx = Rc<dyn AppApi>` — the Leptos context handle. |
 
 - **Production** provides `Rc::new(RealTauriApi)` in `app.rs`.

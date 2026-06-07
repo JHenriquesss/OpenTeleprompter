@@ -155,12 +155,31 @@ mounting real Leptos components in WASM tests against a mock backend — no Taur
 
 Mounted tests settle async via a bounded `tick`/`settle` poll (≈6 × 10 ms), not fixed sleeps. [[docs/frontend-testing.md]]
 
+## ScriptLibrary action flows (Phase 12) — `src/component_tests.rs`
+
+Drive real DOM clicks on rendered buttons against `MockApi`. Helpers: `click_by_title`
+(row actions), `click_by_aria` (ConfirmModal — `aria-label` Confirm/Cancel added this phase),
+`click_text` (Import). Asserts via `MockApi::call_count`/`was_not_called`/`exported`/`scripts`
+and `ToastState::snapshot`. Targeted failures via `MockApi::fail_on(cmd)`.
+
+| Test | Proves |
+|------|--------|
+| `import_success_creates_script_with_content` | import → title+body created, success toast |
+| `export_success_exports_correct_script` | export called once with correct id, success toast |
+| `duplicate_creates_copy` | duplicate adds one, success toast |
+| `delete_confirm_full_sequence` | not called pre-confirm, once post, row gone, toast |
+| `delete_cancel_keeps_row` | cancel → not called, row kept, no error |
+| `import_cancel_does_nothing` | None dialog → import not called, no error |
+| `import_failure_shows_error_toast` | fail_on import → error toast, no add |
+| `export_cancel_does_not_export` | None dialog → export not called |
+| `delete_failure_keeps_row_and_errors` | fail_on delete → error toast, row kept |
+
 ## Summary
 
 | Category | Count |
 |----------|-------|
 | Backend tests | 18 (5 domain + 3 import_export + 10 persistence) |
-| Frontend WASM tests | 52 (41 logic/state + 11 component integration) |
+| Frontend WASM tests | 61 (41 logic/state + 20 component integration: 11 Phase 11 + 9 Phase 12) |
 | Architecture assertions | 4 (animation, persistence, toast position, toast timer) |
-| Manual fallback items | save/import/export toasts, native dialogs, visual playback, theme |
-| **Total tests** | **70 (18 backend + 52 WASM)** |
+| Manual fallback items | visual playback smoothness, theme-in-window, real OS dialogs |
+| **Total tests** | **79 (18 backend + 61 WASM)** |
