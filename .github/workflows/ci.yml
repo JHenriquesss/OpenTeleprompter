@@ -7,6 +7,10 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # Bridge: forces Node 20 JS actions (Swatinem/rust-cache@v2 — no Node 24
+  # release yet) onto the Node 24 runtime, clearing deprecation warnings.
+  # Remove once rust-cache ships a Node 24 major.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   validate:

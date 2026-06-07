@@ -10,6 +10,13 @@
 
 Current builds target **Windows x64**, **Linux x86_64**, and **macOS** (Apple Silicon / Intel).
 
+### CI / runner maintenance
+
+- Windows release builds are pinned to **`windows-2025`** (not `windows-latest`) to avoid surprise breakage when GitHub migrates the `windows-latest` label.
+- `release.yml` can be **manually dispatched** (`workflow_dispatch`, or `gh workflow run release.yml --ref <branch>`) to verify a build without publishing — every upload step is gated on `startsWith(github.ref, 'refs/tags/')`, so a non-tag run produces **no** GitHub Release or assets.
+- `release.yml` push trigger matches public-release tags only (`v[0-9]+.[0-9]+.[0-9]+`, `-beta.[0-9]+`); internal phase tags do not trigger it.
+- Node 24: `softprops/action-gh-release@v3` and `actions/checkout@v5` are Node 24-native; `Swatinem/rust-cache@v2` is bridged via `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` until it ships a Node 24 release.
+
 ---
 
 ## Version Policy
