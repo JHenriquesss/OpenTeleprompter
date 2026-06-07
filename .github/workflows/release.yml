@@ -172,6 +172,7 @@ jobs:
         run: |
           sha256sum target/release/bundle/appimage/*.AppImage | sed 's|target/release/bundle/appimage/||' > target/release/SHA256SUMS-linux.txt
           sha256sum target/release/bundle/deb/*.deb | sed 's|target/release/bundle/deb/||' >> target/release/SHA256SUMS-linux.txt
+          sha256sum target/release/bundle/rpm/*.rpm | sed 's|target/release/bundle/rpm/||' >> target/release/SHA256SUMS-linux.txt
           cat target/release/SHA256SUMS-linux.txt
 
       - name: Upload Linux artifacts to release
@@ -181,13 +182,24 @@ jobs:
           files: |
             target/release/bundle/appimage/*.AppImage
             target/release/bundle/deb/*.deb
+            target/release/bundle/rpm/*.rpm
             target/release/SHA256SUMS-linux.txt
           draft: false
           prerelease: true
           generate_release_notes: false
 
   build-macos:
-    runs-on: macos-latest
+    # Native build per arch: macos-13 = Intel (x86_64), macos-14 = Apple Silicon
+    # (aarch64). No cross-compile — each runner builds its own DMG.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-13
+            arch: x64
+          - runner: macos-14
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: write
 
@@ -197,6 +209,7 @@ jobs:
       - name: Show release mode
         run: |
           echo "ref=${{ github.ref }}"
+          echo "arch=${{ matrix.arch }} runner=${{ matrix.runner }}"
           echo "is_tag=${{ startsWith(github.ref, 'refs/tags/') }}"
 
       - name: Install Rust toolchain
@@ -240,8 +253,8 @@ jobs:
 
       - name: Generate SHA256 checksums (macOS)
         run: |
-          shasum -a 256 target/release/bundle/dmg/*.dmg | sed 's|target/release/bundle/dmg/||' > target/release/SHA256SUMS-macos.txt
-          cat target/release/SHA256SUMS-macos.txt
+          shasum -a 256 target/release/bundle/dmg/*.dmg | sed 's|target/release/bundle/dmg/||' > target/release/SHA256SUMS-macos-${{ matrix.arch }}.txt
+          cat target/release/SHA256SUMS-macos-${{ matrix.arch }}.txt
 
       - name: Upload macOS artifacts to release
         uses: softprops/action-gh-release@v3
@@ -249,7 +262,7 @@ jobs:
         with:
           files: |
             target/release/bundle/dmg/*.dmg
-            target/release/SHA256SUMS-macos.txt
+            target/release/SHA256SUMS-macos-${{ matrix.arch }}.txt
           draft: false
           prerelease: true
           generate_release_notes: false
