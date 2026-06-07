@@ -1,4 +1,5 @@
-use crate::bindings::tauri_api::{self, ScriptPlaybackStateData};
+use crate::bindings::tauri_api::ScriptPlaybackStateData;
+use crate::bindings::ApiCtx;
 use crate::prompter::engine::start_scroll_loop;
 use crate::prompter::keyboard::{handle_keydown, KeyboardActions};
 use crate::prompter::mirror::mirror_transform_combined;
@@ -51,6 +52,7 @@ pub fn PrompterView() -> impl IntoView {
     let playback = use_context::<PlaybackState>().expect("PlaybackState not provided");
     let ui = use_context::<UiState>().expect("UiState not provided");
     let toast = expect_context::<ToastState>();
+    let api = use_context::<ApiCtx>().expect("AppApi not provided");
 
     let (settings_loaded, set_settings_loaded) = create_signal(false);
     let (show_controls, set_show_controls) = create_signal(true);
@@ -66,47 +68,59 @@ pub fn PrompterView() -> impl IntoView {
     let interval_handle = Rc::new(Cell::new(None::<i32>));
     let save_interval = Rc::new(Cell::new(None::<i32>));
 
-    let content = create_resource(
-        move || app_state.selected_script_id.get(),
-        move |id| async move {
-            match id {
-                None => String::new(),
-                Some(id_val) => tauri_api::get_script(&id_val)
-                    .await
-                    .map(|s| s.content)
-                    .unwrap_or_default(),
+    let content = create_resource(move || app_state.selected_script_id.get(), {
+        let api = api.clone();
+        move |id: Option<String>| {
+            let api = api.clone();
+            async move {
+                match id {
+                    None => String::new(),
+                    Some(id_val) => api
+                        .get_script(&id_val)
+                        .await
+                        .map(|s| s.content)
+                        .unwrap_or_default(),
+                }
             }
-        },
-    );
-
-    create_effect(move |_| {
-        spawn_local(async move {
-            if let Ok(settings) = tauri_api::get_settings().await {
-                ui.font_size.set(settings.font_size);
-                ui.line_height.set(settings.line_height);
-                ui.text_width.set(settings.text_width);
-                ui.mirror_mode.set(settings.mirror_mode);
-                ui.mirror_vertical.set(settings.mirror_vertical);
-                ui.reading_guide.set(settings.reading_guide_enabled);
-                ui.countdown_seconds.set(settings.countdown_seconds);
-                playback.speed.set(settings.scroll_speed);
-                set_settings_loaded.set(true);
-            }
-        });
+        }
     });
 
-    create_effect(move |_| {
-        let id = app_state.selected_script_id.get();
-        let loaded = settings_loaded.get();
-        if loaded {
+    create_effect({
+        let api = api.clone();
+        move |_| {
+            let api = api.clone();
             spawn_local(async move {
-                if let Some(sid) = id {
-                    if let Ok(Some(state)) = tauri_api::load_playback_state(&sid).await {
-                        set_saved_state.set(Some(state));
-                        set_show_resume_dialog.set(true);
-                    }
+                if let Ok(settings) = api.get_settings().await {
+                    ui.font_size.set(settings.font_size);
+                    ui.line_height.set(settings.line_height);
+                    ui.text_width.set(settings.text_width);
+                    ui.mirror_mode.set(settings.mirror_mode);
+                    ui.mirror_vertical.set(settings.mirror_vertical);
+                    ui.reading_guide.set(settings.reading_guide_enabled);
+                    ui.countdown_seconds.set(settings.countdown_seconds);
+                    playback.speed.set(settings.scroll_speed);
+                    set_settings_loaded.set(true);
                 }
             });
+        }
+    });
+
+    create_effect({
+        let api = api.clone();
+        move |_| {
+            let id = app_state.selected_script_id.get();
+            let loaded = settings_loaded.get();
+            if loaded {
+                let api = api.clone();
+                spawn_local(async move {
+                    if let Some(sid) = id {
+                        if let Ok(Some(state)) = api.load_playback_state(&sid).await {
+                            set_saved_state.set(Some(state));
+                            set_show_resume_dialog.set(true);
+                        }
+                    }
+                });
+            }
         }
     });
 
@@ -121,76 +135,87 @@ pub fn PrompterView() -> impl IntoView {
         });
     });
 
-    create_effect(move |_| {
-        let playing = playback.is_playing.get();
-        let counting = countdown_value.get() > 0;
-        let sid = app_state.selected_script_id.get();
-        if playing && !counting {
-            if let Some(id_val) = sid {
-                let sc = Rc::clone(&save_interval);
-                let pb2 = playback;
-                let ui2 = ui;
-                let sid2 = id_val.clone();
-                let window = web_sys::window().unwrap();
-                let closure: Closure<dyn FnMut()> = Closure::new(move || {
-                    spawn_local({
-                        let pb3 = pb2;
-                        let ui3 = ui2;
-                        let sid3 = sid2.clone();
-                        async move {
-                            let _ = tauri_api::save_playback_state(
-                                &sid3,
-                                pb3.scroll_y.get(),
-                                pb3.speed.get(),
-                                Some(ui3.font_size.get()),
-                                None,
-                                Some(ui3.mirror_mode.get()),
-                                Some(ui3.mirror_vertical.get()),
-                            )
-                            .await;
-                        }
+    create_effect({
+        let api = api.clone();
+        move |_| {
+            let playing = playback.is_playing.get();
+            let counting = countdown_value.get() > 0;
+            let sid = app_state.selected_script_id.get();
+            if playing && !counting {
+                if let Some(id_val) = sid {
+                    let sc = Rc::clone(&save_interval);
+                    let pb2 = playback;
+                    let ui2 = ui;
+                    let sid2 = id_val.clone();
+                    let api = api.clone();
+                    let window = web_sys::window().unwrap();
+                    let closure: Closure<dyn FnMut()> = Closure::new(move || {
+                        let api = api.clone();
+                        spawn_local({
+                            let pb3 = pb2;
+                            let ui3 = ui2;
+                            let sid3 = sid2.clone();
+                            async move {
+                                let _ = api
+                                    .save_playback_state(
+                                        &sid3,
+                                        pb3.scroll_y.get(),
+                                        pb3.speed.get(),
+                                        Some(ui3.font_size.get()),
+                                        None,
+                                        Some(ui3.mirror_mode.get()),
+                                        Some(ui3.mirror_vertical.get()),
+                                    )
+                                    .await;
+                            }
+                        });
                     });
-                });
-                let id = window
-                    .set_interval_with_callback_and_timeout_and_arguments_0(
-                        closure.as_ref().unchecked_ref(),
-                        3000,
-                    )
-                    .unwrap();
-                closure.forget();
-                if let Some(prev) = sc.replace(Some(id)) {
-                    let _ = window.clear_interval_with_handle(prev);
+                    let id = window
+                        .set_interval_with_callback_and_timeout_and_arguments_0(
+                            closure.as_ref().unchecked_ref(),
+                            3000,
+                        )
+                        .unwrap();
+                    closure.forget();
+                    if let Some(prev) = sc.replace(Some(id)) {
+                        let _ = window.clear_interval_with_handle(prev);
+                    }
                 }
-            }
-        } else {
-            if let Some(h) = save_interval.take() {
-                let window = web_sys::window().unwrap();
-                let _ = window.clear_interval_with_handle(h);
+            } else {
+                if let Some(h) = save_interval.take() {
+                    let window = web_sys::window().unwrap();
+                    let _ = window.clear_interval_with_handle(h);
+                }
             }
         }
     });
 
     let prev_playing = Rc::new(Cell::new(false));
-    create_effect(move |_| {
-        let now_playing = playback.is_playing.get();
-        let was_playing = prev_playing.replace(now_playing);
-        if was_playing && !now_playing {
-            if let Some(sid) = app_state.selected_script_id.get() {
-                let sid2 = sid.clone();
-                let pb2 = playback;
-                let ui2 = ui;
-                spawn_local(async move {
-                    let _ = tauri_api::save_playback_state(
-                        &sid2,
-                        pb2.scroll_y.get(),
-                        pb2.speed.get(),
-                        Some(ui2.font_size.get()),
-                        None,
-                        Some(ui2.mirror_mode.get()),
-                        Some(ui2.mirror_vertical.get()),
-                    )
-                    .await;
-                });
+    create_effect({
+        let api = api.clone();
+        move |_| {
+            let now_playing = playback.is_playing.get();
+            let was_playing = prev_playing.replace(now_playing);
+            if was_playing && !now_playing {
+                if let Some(sid) = app_state.selected_script_id.get() {
+                    let sid2 = sid.clone();
+                    let pb2 = playback;
+                    let ui2 = ui;
+                    let api = api.clone();
+                    spawn_local(async move {
+                        let _ = api
+                            .save_playback_state(
+                                &sid2,
+                                pb2.scroll_y.get(),
+                                pb2.speed.get(),
+                                Some(ui2.font_size.get()),
+                                None,
+                                Some(ui2.mirror_mode.get()),
+                                Some(ui2.mirror_vertical.get()),
+                            )
+                            .await;
+                    });
+                }
             }
         }
     });
@@ -455,7 +480,9 @@ pub fn PrompterView() -> impl IntoView {
                 }
             }}
 
-            {move || {
+            {
+                let api = api.clone();
+                move || {
                 if show_resume_dialog.get() && countdown_value.get() < 0 {
                     let st = saved_state.get();
                     if let Some(s) = st {
@@ -496,12 +523,16 @@ pub fn PrompterView() -> impl IntoView {
                                             "▶ Resume"
                                         </button>
                                         <button
-                                            on:click=move |_| {
+                                            on:click={
+                                                let api = api.clone();
+                                                move |_| {
                                                 set_show_resume_dialog.set(false);
                                                 if let Some(sid) = app_state.selected_script_id.get() {
+                                                    let api = api.clone();
                                                     spawn_local(async move {
-                                                        let _ = tauri_api::clear_playback_state(&sid).await;
+                                                        let _ = api.clear_playback_state(&sid).await;
                                                     });
+                                                }
                                                 }
                                             }
                                             style="
@@ -523,7 +554,9 @@ pub fn PrompterView() -> impl IntoView {
                 }
             }}
 
-            {move || {
+            {
+                let api = api.clone();
+                move || {
                 let show = show_controls.get() || !playback.is_playing.get() || countdown_value.get() > 0;
                 if show {
                     view! {
@@ -607,11 +640,13 @@ pub fn PrompterView() -> impl IntoView {
                                     <button on:click={
                                         let ap = app_state;
                                         let pb = playback;
+                                        let api = api.clone();
                                         move |_: leptos::ev::MouseEvent| {
                                             pb.scroll_y.set(0.0);
                                             if let Some(sid) = ap.selected_script_id.get() {
+                                                let api = api.clone();
                                                 spawn_local(async move {
-                                                    let _ = tauri_api::clear_playback_state(&sid).await;
+                                                    let _ = api.clear_playback_state(&sid).await;
                                                 });
                                             }
                                         }
@@ -645,6 +680,7 @@ pub fn PrompterView() -> impl IntoView {
                                         let scd = set_countdown_value;
                                         let ui2 = ui;
                                          let ih = Rc::clone(&ih_controls);
+                                         let api = api.clone();
                                          move |_: leptos::ev::MouseEvent| {
                                              exit_fullscreen_if_open();
                                              clear_countdown_interval(&ih);
@@ -653,8 +689,9 @@ pub fn PrompterView() -> impl IntoView {
                                                  let sid2 = sid.clone();
                                                  let pb2 = pb;
                                                  let ui3 = ui2;
+                                                 let api = api.clone();
                                                  spawn_local(async move {
-                                                     let _ = tauri_api::save_playback_state(
+                                                     let _ = api.save_playback_state(
                                                          &sid2,
                                                          pb2.scroll_y.get(),
                                                          pb2.speed.get(),

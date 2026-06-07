@@ -133,12 +133,34 @@ All tests use `wasm_bindgen_test::wasm_bindgen_test` attribute. Speed tests need
 3. **Toast position is non-obstructive.** `src/state/toast.rs` lines 103-107: `position: fixed; bottom: 20px; right: 20px; z-index: 1000; pointer-events: none` on container. Individual cards have `pointer-events: auto` for dismissal. Position avoids the prompter reading line (centered/near-top).
 4. **Toast auto-dismiss uses setTimeout (4s), independent of animation frame.**
 
+## Component integration tests (Phase 11) — `src/component_tests.rs`
+
+Tauri API access is now abstracted behind the `AppApi` trait (`src/bindings/app_api.rs`),
+with `RealTauriApi` in production and `MockApi` (`src/bindings/mock_api.rs`, `#[cfg(test)]`)
+in tests, injected via `provide_context::<ApiCtx>` (`ApiCtx = Rc<dyn AppApi>`). This unblocks
+mounting real Leptos components in WASM tests against a mock backend — no Tauri, no native dialogs.
+
+| Test | Layer | What it proves |
+|------|-------|----------------|
+| `mock_api_lists_and_searches_scripts` | foundation | list + search (title/content) |
+| `mock_api_creates_deletes_duplicates` | foundation | CRUD + `(copy)` duplicate |
+| `mock_api_updates_and_resets_settings` | foundation | settings persist + reset |
+| `mock_api_saves_loads_clears_playback` | foundation | playback round-trip |
+| `mock_api_error_injection_fails_all` | foundation | `.failing()` error path |
+| `script_library_renders_scripts_from_mock` | mounted | `<ScriptLibrary>` renders titles |
+| `script_library_shows_empty_state` | mounted | empty-library state |
+| `settings_panel_loads_through_mock` | mounted | `<SettingsPanel>` calls `get_settings` |
+| `script_editor_loads_selected_script` | mounted | `<ScriptEditor>` calls `get_script` |
+| `prompter_view_shows_resume_dialog_when_state_exists` | mounted | `<PrompterView>` resume dialog |
+
+Mounted tests settle async via a bounded `tick`/`settle` poll (≈6 × 10 ms), not fixed sleeps. [[docs/frontend-testing.md]]
+
 ## Summary
 
 | Category | Count |
 |----------|-------|
 | Backend tests | 18 (5 domain + 3 import_export + 10 persistence) |
-| Frontend WASM tests | 42 (5 speed + 6 mirror + 8 toast + 14 playback + 9 ui_state) |
+| Frontend WASM tests | 52 (41 logic/state + 11 component integration) |
 | Architecture assertions | 4 (animation, persistence, toast position, toast timer) |
-| Manual fallback items | 17 (documented in smoke-phase10.ps1) |
-| **Total tests** | **60 (18 backend + 42 WASM)** |
+| Manual fallback items | save/import/export toasts, native dialogs, visual playback, theme |
+| **Total tests** | **70 (18 backend + 52 WASM)** |

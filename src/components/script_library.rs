@@ -1,4 +1,4 @@
-use crate::bindings::tauri_api;
+use crate::bindings::ApiCtx;
 use crate::components::confirm_modal::ConfirmModal;
 use crate::state::app_state::{AppState, View};
 use crate::state::toast::ToastState;
@@ -10,6 +10,7 @@ use leptos::*;
 pub fn ScriptLibrary() -> impl IntoView {
     let app_state = use_context::<AppState>().expect("AppState not provided");
     let toast = expect_context::<ToastState>();
+    let api = use_context::<ApiCtx>().expect("AppApi not provided");
 
     let search_ref = create_node_ref::<Input>();
 
@@ -29,11 +30,17 @@ pub fn ScriptLibrary() -> impl IntoView {
                 app_state.library_refresh_trigger.get(),
             )
         },
-        move |(query, _)| async move {
-            if query.is_empty() {
-                tauri_api::list_scripts().await
-            } else {
-                tauri_api::search_scripts(&query).await
+        {
+            let api = api.clone();
+            move |(query, _): (String, u32)| {
+                let api = api.clone();
+                async move {
+                    if query.is_empty() {
+                        api.list_scripts().await
+                    } else {
+                        api.search_scripts(&query).await
+                    }
+                }
             }
         },
     );
@@ -70,92 +77,112 @@ pub fn ScriptLibrary() -> impl IntoView {
         show_delete_modal.set(true);
     };
 
-    let confirm_delete = move || {
-        if let Some(id) = pending_delete_id.get() {
-            let toast = toast.clone();
-            spawn_local(async move {
-                match tauri_api::delete_script(&id).await {
-                    Ok(_) => {
-                        toast.add_success("Script deleted");
-                        app_state.refresh_library();
+    let confirm_delete = {
+        let api = api.clone();
+        move || {
+            if let Some(id) = pending_delete_id.get() {
+                let toast = toast.clone();
+                let api = api.clone();
+                spawn_local(async move {
+                    match api.delete_script(&id).await {
+                        Ok(_) => {
+                            toast.add_success("Script deleted");
+                            app_state.refresh_library();
+                        }
+                        Err(e) => toast.add_error(&format!("Delete failed: {}", e)),
                     }
-                    Err(e) => toast.add_error(&format!("Delete failed: {}", e)),
-                }
-            });
+                });
+            }
         }
     };
 
-    let on_duplicate = move |id: String| {
-        let toast = toast.clone();
-        spawn_local(async move {
-            match tauri_api::duplicate_script(&id).await {
-                Ok(script) => {
-                    toast.add_success("Script duplicated");
+    let on_duplicate = Callback::new({
+        let api = api.clone();
+        move |id: String| {
+            let toast = toast.clone();
+            let api = api.clone();
+            spawn_local(async move {
+                match api.duplicate_script(&id).await {
+                    Ok(script) => {
+                        toast.add_success("Script duplicated");
+                        app_state.selected_script_id.set(Some(script.id.clone()));
+                        app_state.editing_script_id.set(Some(script.id));
+                        app_state.view.set(View::Editor);
+                        app_state.refresh_library();
+                    }
+                    Err(e) => toast.add_error(&format!("Duplicate failed: {}", e)),
+                }
+            });
+        }
+    });
+
+    let on_new_script = Callback::new({
+        let api = api.clone();
+        move |_: ()| {
+            let api = api.clone();
+            spawn_local(async move {
+                if let Ok(script) = api.create_script("New Script", "").await {
                     app_state.selected_script_id.set(Some(script.id.clone()));
                     app_state.editing_script_id.set(Some(script.id));
                     app_state.view.set(View::Editor);
                     app_state.refresh_library();
                 }
-                Err(e) => toast.add_error(&format!("Duplicate failed: {}", e)),
-            }
-        });
-    };
+            });
+        }
+    });
 
-    let on_new_script = move |_| {
-        spawn_local(async move {
-            if let Ok(script) = tauri_api::create_script("New Script", "").await {
-                app_state.selected_script_id.set(Some(script.id.clone()));
-                app_state.editing_script_id.set(Some(script.id));
-                app_state.view.set(View::Editor);
-                app_state.refresh_library();
-            }
-        });
-    };
-
-    let on_import = move |_| {
-        let toast = toast.clone();
-        spawn_local(async move {
-            match tauri_api::open_file_dialog().await {
-                Ok(Some(path)) => match tauri_api::read_text_file(&path).await {
-                    Ok(Some(content)) => {
-                        let file_name = path
-                            .rsplit('\\')
-                            .next()
-                            .unwrap_or("imported.txt")
-                            .to_string();
-                        match tauri_api::import_script_from_txt(&content, &file_name).await {
-                            Ok(script) => {
-                                toast.add_success("Script imported");
-                                app_state.selected_script_id.set(Some(script.id.clone()));
-                                app_state.editing_script_id.set(Some(script.id));
-                                app_state.view.set(View::Editor);
-                                app_state.refresh_library();
+    let on_import = {
+        let api = api.clone();
+        move |_| {
+            let toast = toast.clone();
+            let api = api.clone();
+            spawn_local(async move {
+                match api.open_file_dialog().await {
+                    Ok(Some(path)) => match api.read_text_file(&path).await {
+                        Ok(Some(content)) => {
+                            let file_name = path
+                                .rsplit('\\')
+                                .next()
+                                .unwrap_or("imported.txt")
+                                .to_string();
+                            match api.import_script_from_txt(&content, &file_name).await {
+                                Ok(script) => {
+                                    toast.add_success("Script imported");
+                                    app_state.selected_script_id.set(Some(script.id.clone()));
+                                    app_state.editing_script_id.set(Some(script.id));
+                                    app_state.view.set(View::Editor);
+                                    app_state.refresh_library();
+                                }
+                                Err(e) => toast.add_error(&format!("Import failed: {}", e)),
                             }
-                            Err(e) => toast.add_error(&format!("Import failed: {}", e)),
                         }
-                    }
+                        Ok(None) => {}
+                        Err(e) => toast.add_error(&format!("Read file failed: {}", e)),
+                    },
                     Ok(None) => {}
-                    Err(e) => toast.add_error(&format!("Read file failed: {}", e)),
-                },
-                Ok(None) => {}
-                Err(e) => toast.add_error(&format!("Open dialog failed: {}", e)),
-            }
-        });
+                    Err(e) => toast.add_error(&format!("Open dialog failed: {}", e)),
+                }
+            });
+        }
     };
 
-    let on_export = move |id: String| {
-        let toast = toast.clone();
-        spawn_local(async move {
-            match tauri_api::save_file_dialog().await {
-                Ok(Some(path)) => match tauri_api::export_script_to_txt_file(&id, &path).await {
-                    Ok(_) => toast.add_success("Script exported"),
-                    Err(e) => toast.add_error(&format!("Export failed: {}", e)),
-                },
-                Ok(None) => {}
-                Err(e) => toast.add_error(&format!("Save dialog failed: {}", e)),
-            }
-        });
-    };
+    let on_export = Callback::new({
+        let api = api.clone();
+        move |id: String| {
+            let toast = toast.clone();
+            let api = api.clone();
+            spawn_local(async move {
+                match api.save_file_dialog().await {
+                    Ok(Some(path)) => match api.export_script_to_txt_file(&id, &path).await {
+                        Ok(_) => toast.add_success("Script exported"),
+                        Err(e) => toast.add_error(&format!("Export failed: {}", e)),
+                    },
+                    Ok(None) => {}
+                    Err(e) => toast.add_error(&format!("Save dialog failed: {}", e)),
+                }
+            });
+        }
+    });
 
     view! {
         <div style="padding: 24px; height: 100%; display: flex; flex-direction: column;">
@@ -163,7 +190,7 @@ pub fn ScriptLibrary() -> impl IntoView {
                 <h1 style="font-size: 24px; color: var(--text-main); margin: 0;">Script Library</h1>
                 <div style="display: flex; gap: 8px;">
                     <button
-                        on:click=on_new_script
+                        on:click=move |_| on_new_script.call(())
                         style="
                             padding: 8px 16px; border: none; border-radius: 6px;
                             background: var(--button-primary-bg); color: var(--button-primary-text); cursor: pointer;
@@ -236,7 +263,7 @@ pub fn ScriptLibrary() -> impl IntoView {
                                             "Create a new script or import a text file to get started."
                                         </div>
                                         <button
-                                            on:click=on_new_script
+                                            on:click=move |_| on_new_script.call(())
                                             style="
                                                 margin-top: 16px; padding: 10px 24px; border: none;
                                                 border-radius: 6px; background: var(--button-primary-bg); color: var(--button-primary-text);
@@ -307,14 +334,14 @@ pub fn ScriptLibrary() -> impl IntoView {
                                                         {"✏️"}
                                                     </button>
                                                     <button
-                                                        on:click=move |_| on_duplicate(sid_dup.clone())
+                                                        on:click=move |_| on_duplicate.call(sid_dup.clone())
                                                         title="Duplicate"
                                                         style="padding: 4px 10px; border: none; border-radius: 4px; background: var(--button-secondary-bg); color: var(--button-secondary-text); cursor: pointer; font-size: 12px;"
                                                     >
                                                         {"📄"}
                                                     </button>
                                                     <button
-                                                        on:click=move |_| on_export(sid_export.clone())
+                                                        on:click=move |_| on_export.call(sid_export.clone())
                                                         title="Export"
                                                         style="padding: 4px 10px; border: none; border-radius: 4px; background: var(--button-secondary-bg); color: var(--button-secondary-text); cursor: pointer; font-size: 12px;"
                                                     >
