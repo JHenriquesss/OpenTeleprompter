@@ -8,6 +8,24 @@ extern "C" {
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
 }
 
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name = once)]
+    fn tauri_event_once(event: &str, handler: &JsValue);
+}
+
+/// Subscribe to the backend `close-to-tray` event **once** — Tauri's
+/// `event.once` auto-unlistens after the first fire, so the hint shows at most
+/// once per app run. Assumes the Tauri event API is present (same assumption as
+/// `invoke`); only call from the running desktop app.
+pub fn on_close_to_tray_once<F: FnMut() + 'static>(mut cb: F) {
+    let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |_payload: JsValue| {
+        cb();
+    }) as Box<dyn FnMut(JsValue)>);
+    tauri_event_once("close-to-tray", closure.as_ref());
+    closure.forget();
+}
+
 pub async fn invoke_tauri<A, R>(cmd: &str, args: A) -> Result<R, String>
 where
     A: Serialize,

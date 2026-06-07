@@ -268,3 +268,13 @@ Two repos after privacy incident (2026-06-07):
 - **Config** (`tauri.conf.json` `plugins.updater`): embedded minisign `pubkey`, endpoint `releases/latest/download/latest.json`, Windows `installMode: passive`. Private signing key is git-ignored (`.updater-keys/`) + lives in GH secret `TAURI_SIGNING_PRIVATE_KEY`.
 - **Frontend**: `UpdateBanner` (`src/components/update_banner.rs`) auto-checks on mount through `ApiCtx`; silent when up to date, error toast on check failure, Install/Dismiss when an update exists. Wired into `AppShell` above sidebar+content (hidden in fullscreen prompter). Install is user-initiated only — no silent auto-install.
 - First *signed release* is deferred (needs `bundle.createUpdaterArtifacts` + secrets + a `latest.json`); see docs/release.md → Auto-Update and [[06-open-threads.md]].
+
+## System tray (Phase 16)
+
+`src-tauri/src/tray.rs` + `lib.rs` wiring. Requires the `tray-icon` **cargo feature** on `tauri` (no new crate).
+
+- **Testable seam:** `tray_action(menu_id: &str) -> Option<TrayAction>` — pure id→`{Show,Hide,Quit}` map (3 unit tests). Menu ids are `MENU_SHOW`/`MENU_HIDE`/`MENU_QUIT` constants shared by builder + mapper so they can't drift.
+- **Tray:** `build_tray` (called from `.setup`) builds a `TrayIconBuilder` with the app icon, tooltip, and a Show/Hide/Quit menu. `show_menu_on_left_click(false)`: left-click toggles window visibility (`on_tray_icon_event`, `Click`+`Left`+`Up`), right-click opens the menu (`on_menu_event` → `tray_action` → `apply_action`).
+- **Hide-to-tray:** `lib.rs` `.on_window_event` intercepts `CloseRequested` → `api.prevent_close()` + `window.hide()` + `window.emit("close-to-tray", ())`. App keeps running; **Quit (tray) is the only full exit** (`app.exit(0)`).
+- **One-time hint:** frontend `AppShell` effect calls `tauri_api::on_close_to_tray_once` (wraps Tauri `event.once`) → info toast at most once per app run.
+- Tray/window runtime behavior is **manual-verified** (GUI, not unit-testable); `tray_action` is the automated part. [[03-phases.md#phase-16-system-tray-icon]]

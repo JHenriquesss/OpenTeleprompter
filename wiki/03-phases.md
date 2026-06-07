@@ -736,3 +736,14 @@ After containment, created a new clean public repository:
 - **Verification (dispatch run `27106260729` on branch):** windows ✅, linux **+rpm** ✅ (rpm checksum step green ⇒ rpm bundle built), macos-14 **aarch64** ✅. `gh release list` unchanged 3→3 (no publish on non-tag run).
 - **macos-13 (Intel x64): verified-by-parity** — the leg ran the *identical* matrix job that macos-14 passed, but the Intel runner never scheduled (queued >70 min; GitHub Intel-runner scarcity, not a code issue). Accepted as a verified-partial close; first real Intel DMG will be produced on the next tagged release. [[06-open-threads.md]]
 - Verification-gated infra phase (no unit tests). must-exist 6/6 (me-4 Intel leg by-parity), must-not-exist clean.
+
+## Phase 16: System Tray Icon
+
+**Scope:** background-capable tray. Window X hides to tray (app keeps running); tray toggles visibility + Show/Hide/Quit menu; one-time hint on first hide. Feature phase — small unit-tested seam + manual-verified GUI runtime.
+**Merged:** PR #9 on main · **no phase tag**.
+
+- **`src-tauri/src/tray.rs`:** pure `tray_action(&str) -> Option<TrayAction>` mapper (Show/Hide/Quit/None) + 3 unit tests; `MENU_SHOW/HIDE/QUIT` constants; `build_tray` (TrayIconBuilder: app icon, tooltip, menu, `show_menu_on_left_click(false)`, left-click toggles window, menu dispatch via `tray_action`→`apply_action`); window helpers show/hide/toggle.
+- **`lib.rs`:** `mod tray`; `.setup` calls `build_tray`; `.on_window_event` `CloseRequested` → `prevent_close()` + `hide()` + `emit("close-to-tray")`. Requires `tray-icon` cargo feature on `tauri` (no new crate). Quit = only full exit.
+- **Frontend hint:** `tauri_api::on_close_to_tray_once` (wraps Tauri `event.once`); `AppShell` effect shows an info toast at most once per run.
+- **Validation:** 21 backend (+3 tray) + 67 WASM, fmt + backend clippy `-D warnings` + trunk build. CI green. Tray/window runtime = manual smoke (`cargo tauri dev`): X→tray + hint, left-click toggle, menu Show/Hide/Quit.
+- must-exist 7/7 (me-1 unit-tested; me-2..5 + tray runtime manual-verified), must-not-exist clean. No new dependency.

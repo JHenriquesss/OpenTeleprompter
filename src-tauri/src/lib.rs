@@ -3,6 +3,7 @@ mod commands;
 mod domain;
 mod persistence;
 mod services;
+mod tray;
 
 use commands::import_export::ImportExportCommandHandler;
 use commands::playback_state::PlaybackStateCommandHandler;
@@ -18,6 +19,7 @@ use services::playback_state_service::PlaybackStateService;
 use services::script_service::ScriptService;
 use services::settings_service::SettingsService;
 use std::sync::Arc;
+use tauri::Emitter;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -81,6 +83,20 @@ pub fn run() {
             commands::updater::check_for_update,
             commands::updater::install_update,
         ])
+        .setup(|app| {
+            tray::build_tray(app.handle())?;
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Close (X) hides to the tray instead of quitting; the app keeps
+            // running. Full exit is via the tray's Quit item. Emit a one-time
+            // hint so the frontend can tell the user it is still running.
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+                let _ = window.emit("close-to-tray", ());
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
