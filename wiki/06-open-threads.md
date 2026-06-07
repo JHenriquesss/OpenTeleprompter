@@ -45,13 +45,12 @@
 |--------|--------|
 | **Unsigned Windows installers** | Authenticode signing not configured. Users see SmartScreen warning on download/install. Requires code signing certificate (paid, org validation). Will be addressed in a future phase. SmartScreen can be bypassed via "More info → Run anyway" |
 | **Unsigned macOS builds** | Gatekeeper blocks unsigned app on first launch. Requires Apple Developer Program enrollment + notarization. Workaround: right-click → Open |
-| **macOS Intel builds** | Only `aarch64` (Apple Silicon) DMG built. `macos-latest` now maps to ARM. Need `macos-13` for x86_64 or matrix with both archs |
-| **Linux RPM** | Only deb + AppImage. No RPM for Fedora/RHEL. Requires `rpmbuild` or additional CI deps |
 | **`cargo install tauri-cli` compile time** | Compiles from source on every cache-miss CI run. Adds ~10 min per platform. Could use `cargo binstall tauri-cli` for pre-built binary, or `tauri-apps/tauri-action` which handles CLI download and build in one step |
 | **Tray icon** | No system tray. App lives in taskbar only. Could add minimize-to-tray + notification for background playback |
 | **Linux AppImage large size** | 78 MB due to bundled webkit2gtk runtime. Could strip or compress, or document minimum size expectation |
 | **Checksum file path cosmetics (Linux/macOS)** | SHA256SUMS files use build-directory paths. `sha256sum --check` requires same directory structure. Manual hash comparison is the primary workflow. Could fix with `sha256sum --basename` or `cd` + `sha256sum *.AppImage` |
 | **First signed updater release** | Updater is wired (Phase 14) but no signed release is published yet. Needs repo secrets `TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD`, `bundle.createUpdaterArtifacts: true`, and a `latest.json` manifest on a public release. See docs/release.md → Auto-Update |
+| **macOS Intel runner queue (`macos-13`)** | The Intel matrix leg is correct (parity with the green `macos-14` leg) but GitHub `macos-13` runners are scarce — a Phase 15 verification dispatch left it queued >70 min unscheduled. First real Intel DMG lands on the next tagged release; if Intel queues stay pathological, consider dropping Intel or building it only on tags |
 
 ## Resolved
 
@@ -211,3 +210,10 @@
 |--------|-----------|
 | Auto-update | `tauri-plugin-updater` wired: backend `check_for_update`/`install_update` (two-step via `PendingUpdate` state), `plugins.updater` config (pubkey + GitHub `latest.json` endpoint), `UpdateBanner` prompt. 6 WASM tests. First *signed release* deferred (see open threads above) |
 | Updater signing key | Minisign keypair generated; public key embedded in `tauri.conf.json`, private key git-ignored + documented as GH secret. `release.yml` passes the secret through |
+
+### Phase 15 (platform coverage)
+
+| Thread | Resolution |
+|--------|-----------|
+| macOS Intel builds | `build-macos` matrixed over `macos-13` (native Intel x86_64) + `macos-14` (native aarch64). Per-arch DMG + `SHA256SUMS-macos-<arch>.txt`. No cross-compile |
+| Linux RPM | Added `bundle/rpm/*.rpm` (from Tauri's `"all"` target, pure-Rust builder — no `rpmbuild`) to Linux checksum + upload globs. Fedora/RHEL/openSUSE covered |
