@@ -177,7 +177,8 @@ pub async fn export_script_to_txt_file(id: &str, path: &str) -> Result<(), Strin
 pub async fn import_script_from_txt(content: &str, file_name: &str) -> Result<ScriptData, String> {
     invoke_tauri(
         "import_script_from_txt",
-        serde_json::json!({ "content": content, "file_name": file_name }),
+        // Tauri v2 expects camelCase arg keys; `file_name` -> `fileName`.
+        serde_json::json!({ "content": content, "fileName": file_name }),
     )
     .await
 }
