@@ -747,3 +747,25 @@ After containment, created a new clean public repository:
 - **Frontend hint:** `tauri_api::on_close_to_tray_once` (wraps Tauri `event.once`); `AppShell` effect shows an info toast at most once per run.
 - **Validation:** 21 backend (+3 tray) + 67 WASM, fmt + backend clippy `-D warnings` + trunk build. CI green. Tray/window runtime = manual smoke (`cargo tauri dev`): X→tray + hint, left-click toggle, menu Show/Hide/Quit.
 - must-exist 7/7 (me-1 unit-tested; me-2..5 + tray runtime manual-verified), must-not-exist clean. No new dependency.
+
+## Phase 17: First Stable Release (v1.0.0) + Updater Manifest
+
+**Scope:** ship the first public stable release with working auto-update. Release engineering, no app feature change.
+**Merged:** PR #10 (`a3dafbf`) · **tag `v1.0.0`** (first public stable release).
+
+- Version 0.10.0 → 1.0.0 (root + src-tauri Cargo.toml, tauri.conf.json, sidebar fallback, mock default).
+- `bundle.createUpdaterArtifacts: true` → each platform build emits signed updater bundles + `.sig`.
+- Updater GH secrets `TAURI_SIGNING_PRIVATE_KEY` (+ empty `_PASSWORD`) set via `gh secret set` from the gitignored key file.
+- `release.yml` updater manifest: `scripts/updater-fragment.sh` emits a per-platform `{signature,url}` fragment (workflow artifact); macOS `.app.tar.gz` renamed per-arch (avoids asset collision) + uploaded; new `publish-updater-manifest` job merges via `scripts/assemble-latest-json.sh` → uploads `latest.json` (tag-only). Asset URLs derived deterministically (GitHub serves spaces as dots). `.gitattributes` pins `*.sh` LF.
+- **Outcome (ok-partial):** v1.0.0 tag → win + linux(+rpm) + macOS-aarch64 built/published; **macos-13 Intel never scheduled (GitHub queue) → cancelled.** `latest.json` finalized manually from the 3 succeeded fragments + uploaded; release promoted to **full/non-prerelease** so `releases/latest/download/latest.json` resolves (endpoint HTTP 200). **Auto-update live for windows-x86_64 / linux-x86_64 / darwin-aarch64.** Intel-mac DMG/updater deferred to v1.0.1.
+- **Follow-up (tracked):** harden `release.yml` — prerelease-by-tag; split macOS jobs so the Intel leg never blocks the manifest; cut v1.0.1 with Intel-mac. [[06-open-threads.md]]
+
+## Phase 19: Docs Refresh for v1.0
+
+**Scope:** bring user-facing docs to v1.0.0. (Phase 18 = user cross-platform manual smoke, runs in parallel.)
+**Merged:** PR #11.
+
+- `README.md`: version → 1.0.0 stable (drop beta framing), correct download filenames + RPM + Intel-→v1.0.1 note, features add system tray / auto-update / cross-platform packaging, test count → 85 (18 backend + 67 WASM), platform table, dev clone path `OpenTeleprompter`.
+- `CHANGELOG.md`: `[1.0.0]` entry consolidating the teleprompter/library/platform/engineering feature set.
+- `docs/install.md`: v1.0.0 + filenames, RPM row, per-arch macOS checksums, new **Automatic updates** + **System tray** sections, beta→stable wording.
+- Screenshots: regeneration with synthetic content deferred (needs GUI capture; tracked).
