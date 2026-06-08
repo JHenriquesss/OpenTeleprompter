@@ -18,6 +18,11 @@ pub fn AppShell() -> impl IntoView {
     let api = use_context::<ApiCtx>().expect("AppApi not provided");
     let toast = use_context::<ToastState>().expect("ToastState not provided");
 
+    // Clones for the drag-and-drop effect (api/toast are moved into the effects
+    // below).
+    let drop_api = api.clone();
+    let drop_toast = toast.clone();
+
     let current_view = move || app_state.view.get();
 
     create_effect(move |_| {
@@ -36,6 +41,42 @@ pub fn AppShell() -> impl IntoView {
             toast.add_info(
                 "OpenPrompter is still running in the system tray. Use the tray icon to quit.",
             );
+        });
+    });
+
+    // Drag-and-drop import: drop txt/md/pdf/docx files onto the window to import
+    // them (Tauri emits `tauri://drag-drop`). Registered once.
+    create_effect(move |_| {
+        let api = drop_api.clone();
+        let toast = drop_toast.clone();
+        crate::bindings::tauri_api::on_file_drop(move |paths| {
+            for path in paths {
+                let api = api.clone();
+                let toast = toast.clone();
+                let file_name = path
+                    .rsplit(['\\', '/'])
+                    .next()
+                    .unwrap_or("imported")
+                    .to_string();
+                spawn_local(async move {
+                    match api.read_text_file(&path).await {
+                        Ok(Some(content)) => {
+                            match api.import_script_from_txt(&content, &file_name).await {
+                                Ok(script) => {
+                                    toast.add_success(&format!("Imported {}", file_name));
+                                    app_state.selected_script_id.set(Some(script.id.clone()));
+                                    app_state.editing_script_id.set(Some(script.id));
+                                    app_state.view.set(View::Editor);
+                                    app_state.refresh_library();
+                                }
+                                Err(e) => toast.add_error(&format!("Import failed: {}", e)),
+                            }
+                        }
+                        Ok(None) => {}
+                        Err(e) => toast.add_error(&format!("Import failed: {}", e)),
+                    }
+                });
+            }
         });
     });
 

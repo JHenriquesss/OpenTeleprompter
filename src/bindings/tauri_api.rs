@@ -12,6 +12,36 @@ extern "C" {
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name = once)]
     fn tauri_event_once(event: &str, handler: &JsValue);
+
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name = listen)]
+    fn tauri_event_listen(event: &str, handler: &JsValue);
+}
+
+/// Subscribe to OS file drag-and-drop onto the window. The callback receives the
+/// dropped file paths. Only meaningful in the running desktop app (assumes the
+/// Tauri event API is present, same as `invoke`).
+pub fn on_file_drop<F: FnMut(Vec<String>) + 'static>(mut cb: F) {
+    let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |event: JsValue| {
+        // event.payload.paths: string[]
+        let paths = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            .and_then(|p| js_sys::Reflect::get(&p, &JsValue::from_str("paths")))
+            .ok();
+        let mut out = Vec::new();
+        if let Some(arr) = paths {
+            if let Ok(arr) = arr.dyn_into::<js_sys::Array>() {
+                for v in arr.iter() {
+                    if let Some(s) = v.as_string() {
+                        out.push(s);
+                    }
+                }
+            }
+        }
+        if !out.is_empty() {
+            cb(out);
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+    tauri_event_listen("tauri://drag-drop", closure.as_ref().unchecked_ref());
+    closure.forget();
 }
 
 /// Subscribe to the backend `close-to-tray` event **once** — Tauri's
@@ -156,6 +186,15 @@ pub async fn export_script_to_txt(id: &str) -> Result<(String, String), String> 
 
 pub async fn get_app_version() -> Result<String, String> {
     invoke_tauri("get_app_version", serde_json::json!({})).await
+}
+
+/// Open the always-on-top picture-in-picture prompter window for a script.
+pub async fn open_pip_window(script_id: &str) -> Result<(), String> {
+    invoke_tauri_unit(
+        "open_pip_window",
+        serde_json::json!({ "scriptId": script_id }),
+    )
+    .await
 }
 
 /// Metadata about an available update, returned by the `check_for_update`

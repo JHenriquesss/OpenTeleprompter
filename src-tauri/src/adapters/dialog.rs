@@ -4,7 +4,11 @@ use tauri_plugin_dialog::DialogExt;
 pub fn pick_file_to_open(app: &AppHandle) -> Option<String> {
     app.dialog()
         .file()
-        .add_filter("Text Files", &["txt"])
+        .add_filter(
+            "Documents",
+            crate::adapters::document::supported_extensions(),
+        )
+        .add_filter("All Files", &["*"])
         .blocking_pick_file()
         .and_then(|f| f.as_path().map(|p| p.to_string_lossy().to_string()))
 }

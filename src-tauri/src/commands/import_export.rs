@@ -50,12 +50,13 @@ pub fn save_file_dialog(app: AppHandle) -> Result<Option<String>, String> {
 
 #[tauri::command]
 pub fn read_text_file(path: String) -> Result<Option<String>, String> {
-    // Read directly and surface any OS error, rather than silently returning
-    // `None` when an `exists()` probe fails (which made import fail quietly).
+    // Extract plain text from any supported document (txt/md/pdf/docx), and
+    // surface errors instead of silently returning `None` (which made import
+    // fail quietly).
     let p = Path::new(&path);
-    adapters::file_system::read_text_file(p)
+    adapters::document::extract_text(p)
         .map(Some)
-        .map_err(|e| format!("Could not read '{}': {}", path, e))
+        .map_err(|e| format!("Could not import '{}': {}", path, e))
 }
 
 #[tauri::command]

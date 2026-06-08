@@ -669,6 +669,23 @@ pub fn PrompterView() -> impl IntoView {
                                     <span style="font-size: 11px; color: #666; min-width: 32px; text-align: right;">
                                         {move || format!("{:.1}x", playback.speed.get())}
                                     </span>
+                                    <button on:click={
+                                        let ap = app_state;
+                                        let api = api.clone();
+                                        move |_: leptos::ev::MouseEvent| {
+                                            if let Some(sid) = ap.selected_script_id.get() {
+                                                let api = api.clone();
+                                                spawn_local(async move {
+                                                    let _ = api.open_pip_window(&sid).await;
+                                                });
+                                            }
+                                        }
+                                    }
+                                        title="Pop out a floating always-on-top window"
+                                        style="padding: 4px 8px; border: 1px solid #555; border-radius: 4px;
+                                               background: transparent; color: #ccc; cursor: pointer; font-size: 11px;">
+                                        "📌 PiP"
+                                    </button>
                                     <button on:click=move |_| toggle_fullscreen()
                                         style="padding: 4px 8px; border: 1px solid #555; border-radius: 4px;
                                                background: transparent; color: #ccc; cursor: pointer; font-size: 11px;">
