@@ -398,8 +398,8 @@ impl AppApi for MockApi {
         Ok(self.inner.borrow().version.clone())
     }
 
-    async fn open_pip_window(&self, _script_id: &str) -> Result<(), String> {
-        self.log("open_pip_window");
+    async fn set_pip(&self, _enabled: bool) -> Result<(), String> {
+        self.log("set_pip");
         self.check_error()?;
         Ok(())
     }

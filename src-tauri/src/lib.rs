@@ -80,7 +80,7 @@ pub fn run() {
             commands::import_export::read_text_file,
             commands::import_export::export_script_to_txt_file,
             commands::system::get_app_version,
-            commands::system::open_pip_window,
+            commands::system::set_pip,
             commands::updater::check_for_update,
             commands::updater::install_update,
         ])

@@ -192,13 +192,9 @@ pub async fn get_app_version() -> Result<String, String> {
     invoke_tauri("get_app_version", serde_json::json!({})).await
 }
 
-/// Open the always-on-top picture-in-picture prompter window for a script.
-pub async fn open_pip_window(script_id: &str) -> Result<(), String> {
-    invoke_tauri_unit(
-        "open_pip_window",
-        serde_json::json!({ "scriptId": script_id }),
-    )
-    .await
+/// Pin/unpin the window as a small always-on-top picture-in-picture float.
+pub async fn set_pip(enabled: bool) -> Result<(), String> {
+    invoke_tauri_unit("set_pip", serde_json::json!({ "enabled": enabled })).await
 }
 
 /// Metadata about an available update, returned by the `check_for_update`

@@ -44,8 +44,8 @@ pub trait AppApi {
 
     async fn get_app_version(&self) -> Result<String, String>;
 
-    /// Open the always-on-top picture-in-picture prompter window for a script.
-    async fn open_pip_window(&self, script_id: &str) -> Result<(), String>;
+    /// Pin/unpin the window as a small always-on-top picture-in-picture float.
+    async fn set_pip(&self, enabled: bool) -> Result<(), String>;
 
     /// Check for an available update. `Ok(None)` = already up to date.
     async fn check_for_update(&self) -> Result<Option<UpdateInfo>, String>;
@@ -142,8 +142,8 @@ impl AppApi for RealTauriApi {
         tauri_api::get_app_version().await
     }
 
-    async fn open_pip_window(&self, script_id: &str) -> Result<(), String> {
-        tauri_api::open_pip_window(script_id).await
+    async fn set_pip(&self, enabled: bool) -> Result<(), String> {
+        tauri_api::set_pip(enabled).await
     }
 
     async fn check_for_update(&self) -> Result<Option<UpdateInfo>, String> {
