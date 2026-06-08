@@ -18,9 +18,8 @@ pub fn AppShell() -> impl IntoView {
     let api = use_context::<ApiCtx>().expect("AppApi not provided");
     let toast = use_context::<ToastState>().expect("ToastState not provided");
 
-    // Clones for the drag-and-drop effect (api/toast are moved into the effects
-    // below).
-    let drop_api = api.clone();
+    // Clone for the library-changed (drag-drop import) effect; `toast` is moved
+    // into the tray effect below.
     let drop_toast = toast.clone();
 
     let current_view = move || app_state.view.get();
@@ -44,40 +43,14 @@ pub fn AppShell() -> impl IntoView {
         });
     });
 
-    // Drag-and-drop import: drop txt/md/pdf/docx files onto the window to import
-    // them (Tauri emits `tauri://drag-drop`). Registered once.
+    // Drag-and-drop import is handled in the Rust backend (window DragDrop
+    // event); when it finishes it emits `library-changed`. Refresh the library
+    // and notify the user.
     create_effect(move |_| {
-        let api = drop_api.clone();
         let toast = drop_toast.clone();
-        crate::bindings::tauri_api::on_file_drop(move |paths| {
-            toast.add_info(&format!("Importing {} file(s)…", paths.len()));
-            for path in paths {
-                let api = api.clone();
-                let toast = toast.clone();
-                let file_name = path
-                    .rsplit(['\\', '/'])
-                    .next()
-                    .unwrap_or("imported")
-                    .to_string();
-                spawn_local(async move {
-                    match api.read_text_file(&path).await {
-                        Ok(Some(content)) => {
-                            match api.import_script_from_txt(&content, &file_name).await {
-                                Ok(script) => {
-                                    toast.add_success(&format!("Imported {}", file_name));
-                                    app_state.selected_script_id.set(Some(script.id.clone()));
-                                    app_state.editing_script_id.set(Some(script.id));
-                                    app_state.view.set(View::Editor);
-                                    app_state.refresh_library();
-                                }
-                                Err(e) => toast.add_error(&format!("Import failed: {}", e)),
-                            }
-                        }
-                        Ok(None) => {}
-                        Err(e) => toast.add_error(&format!("Import failed: {}", e)),
-                    }
-                });
-            }
+        crate::bindings::tauri_api::on_library_changed(move |n| {
+            toast.add_success(&format!("Imported {} file(s)", n));
+            app_state.refresh_library();
         });
     });
 

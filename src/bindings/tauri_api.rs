@@ -31,30 +31,19 @@ extern "C" {
     fn tauri_event_listen(event: &str, handler: &JsValue);
 }
 
-/// Subscribe to OS file drag-and-drop onto the window. The callback receives the
-/// dropped file paths. Only meaningful in the running desktop app (assumes the
-/// Tauri event API is present, same as `invoke`).
-pub fn on_file_drop<F: FnMut(Vec<String>) + 'static>(mut cb: F) {
+/// Subscribe to the backend `library-changed` event, emitted after a
+/// drag-and-drop import completes in the Rust window-event handler. The callback
+/// receives the number of scripts imported. (Drag-drop is handled in the backend
+/// for reliability; this just tells the UI to refresh.)
+pub fn on_library_changed<F: FnMut(u32) + 'static>(mut cb: F) {
     let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |event: JsValue| {
-        // event.payload.paths: string[]
-        let paths = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
-            .and_then(|p| js_sys::Reflect::get(&p, &JsValue::from_str("paths")))
-            .ok();
-        let mut out = Vec::new();
-        if let Some(arr) = paths {
-            if let Ok(arr) = arr.dyn_into::<js_sys::Array>() {
-                for v in arr.iter() {
-                    if let Some(s) = v.as_string() {
-                        out.push(s);
-                    }
-                }
-            }
-        }
-        if !out.is_empty() {
-            cb(out);
-        }
+        let n = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            .ok()
+            .and_then(|p| p.as_f64())
+            .unwrap_or(0.0) as u32;
+        cb(n);
     }) as Box<dyn FnMut(JsValue)>);
-    tauri_event_listen("tauri://drag-drop", closure.as_ref().unchecked_ref());
+    tauri_event_listen("library-changed", closure.as_ref().unchecked_ref());
     closure.forget();
 }
 

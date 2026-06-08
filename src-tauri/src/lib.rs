@@ -97,6 +97,33 @@ pub fn run() {
                 let _ = window.hide();
                 let _ = window.emit("close-to-tray", ());
             }
+
+            // Drag-and-drop import, handled in the backend (typed window event)
+            // rather than via a JS listener. Supported files are imported through
+            // the real service; the frontend is told to refresh via an event.
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                use tauri::Manager;
+                let handler = window.state::<ImportExportCommandHandler>();
+                let mut imported = 0u32;
+                for path in paths {
+                    if !adapters::document::is_supported(path) {
+                        continue;
+                    }
+                    let name = path
+                        .file_name()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("imported")
+                        .to_string();
+                    if let Ok(text) = adapters::document::extract_text(path) {
+                        if handler.service.import_from_content(text, name).is_ok() {
+                            imported += 1;
+                        }
+                    }
+                }
+                if imported > 0 {
+                    let _ = window.emit("library-changed", imported);
+                }
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
