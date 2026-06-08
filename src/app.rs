@@ -7,12 +7,13 @@ use crate::state::ui_state::UiState;
 use leptos::*;
 use std::rc::Rc;
 
-/// If launched as a picture-in-picture window, the URL carries `?pip=<script_id>`.
+/// If launched as a picture-in-picture window, the URL carries `#pip=<script_id>`
+/// (a hash fragment, so the Tauri asset resolver still serves index.html).
 /// Returns that id so the app can boot straight into the prompter for it.
 fn pip_script_id() -> Option<String> {
-    let search = web_sys::window()?.location().search().ok()?;
-    let q = search.trim_start_matches('?');
-    for pair in q.split('&') {
+    let hash = web_sys::window()?.location().hash().ok()?;
+    let h = hash.trim_start_matches('#');
+    for pair in h.split('&') {
         let mut it = pair.splitn(2, '=');
         if it.next() == Some("pip") {
             return it.next().filter(|s| !s.is_empty()).map(|s| s.to_string());

@@ -16,7 +16,11 @@ pub fn open_pip_window(app: AppHandle, script_id: String) -> Result<(), String> 
         return Ok(());
     }
 
-    let url = format!("index.html?pip={}", script_id);
+    // Pass the script id in the URL *hash* (not a query): `WebviewUrl::App`
+    // resolves the path as an asset, so `index.html?pip=x` would 404 to a blank
+    // page. A hash fragment is ignored by the asset resolver and read by the
+    // frontend via `location.hash`.
+    let url = format!("index.html#pip={}", script_id);
     WebviewWindowBuilder::new(&app, "pip", WebviewUrl::App(url.into()))
         .title("Prompter (PiP)")
         .inner_size(560.0, 320.0)
