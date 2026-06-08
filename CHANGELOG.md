@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.1] — 2026-06-08
+
+Release-pipeline hardening (no app behavior change).
+
+- Native **Intel macOS (x86_64)** DMG + updater now built on its own job (v1.0.0 shipped Apple Silicon only).
+- `release.yml`: `prerelease` is set automatically from the tag (pre-release only for `-` tags), so stable tags publish as full releases (the updater endpoint resolves without a manual promote).
+- The Intel-mac job no longer blocks the updater manifest: `latest.json` publishes from Windows + Linux + Apple-Silicon even if the scarce Intel runner is queue-stalled (Intel is added when it completes).
+- `SHA256SUMS-*` filenames normalized (spaces → dots) to match the published GitHub asset names, so `sha256sum --check` works directly.
+
 ## [1.0.0] — 2026-06-08
 
 First stable release. Cross-platform, offline, auto-updating desktop teleprompter.
