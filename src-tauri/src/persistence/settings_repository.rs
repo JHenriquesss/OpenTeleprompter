@@ -18,8 +18,7 @@ impl SettingsRepository {
         // deadlocks — which froze first-run settings loading on an empty DB.
         let stored: Option<String> = {
             let conn = self.db.conn();
-            let mut stmt =
-                conn.prepare("SELECT value FROM settings WHERE key = 'app_settings'")?;
+            let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = 'app_settings'")?;
             match stmt.query_row([], |row| row.get::<_, String>(0)) {
                 Ok(json_str) => Some(json_str),
                 Err(rusqlite::Error::QueryReturnedNoRows) => None,
