@@ -103,6 +103,18 @@ jobs:
           prerelease: true
           generate_release_notes: true
 
+      - name: Updater fragment (Windows)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: bash scripts/updater-fragment.sh windows-x86_64 "target/release/bundle/nsis/*-setup.exe"
+
+      - name: Upload updater fragment (Windows)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-frag-windows-x86_64
+          path: updater-frag/windows-x86_64.json
+
   build-linux:
     runs-on: ubuntu-latest
     permissions:
@@ -188,6 +200,17 @@ jobs:
           prerelease: true
           generate_release_notes: false
 
+      - name: Updater fragment (Linux)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: bash scripts/updater-fragment.sh linux-x86_64 "target/release/bundle/appimage/*.AppImage"
+
+      - name: Upload updater fragment (Linux)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-frag-linux-x86_64
+          path: updater-frag/linux-x86_64.json
+
   build-macos:
     # Native build per arch: macos-13 = Intel (x86_64), macos-14 = Apple Silicon
     # (aarch64). No cross-compile — each runner builds its own DMG.
@@ -197,8 +220,10 @@ jobs:
         include:
           - runner: macos-13
             arch: x64
+            updater_arch: x86_64
           - runner: macos-14
             arch: aarch64
+            updater_arch: aarch64
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: write
@@ -251,6 +276,17 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: Name macOS updater bundle per arch
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd target/release/bundle/macos
+          for f in *.app.tar.gz; do
+            base="${f%.app.tar.gz}"
+            mv "$f" "${base}_${{ matrix.arch }}.app.tar.gz"
+            mv "${f}.sig" "${base}_${{ matrix.arch }}.app.tar.gz.sig"
+          done
+          ls -la
+
       - name: Generate SHA256 checksums (macOS)
         run: |
           shasum -a 256 target/release/bundle/dmg/*.dmg | sed 's|target/release/bundle/dmg/||' > target/release/SHA256SUMS-macos-${{ matrix.arch }}.txt
@@ -262,7 +298,50 @@ jobs:
         with:
           files: |
             target/release/bundle/dmg/*.dmg
+            target/release/bundle/macos/*.app.tar.gz
             target/release/SHA256SUMS-macos-${{ matrix.arch }}.txt
+          draft: false
+          prerelease: true
+          generate_release_notes: false
+
+      - name: Updater fragment (macOS)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: bash scripts/updater-fragment.sh "darwin-${{ matrix.updater_arch }}" "target/release/bundle/macos/*_${{ matrix.arch }}.app.tar.gz"
+
+      - name: Upload updater fragment (macOS)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-frag-darwin-${{ matrix.updater_arch }}
+          path: updater-frag/darwin-${{ matrix.updater_arch }}.json
+
+  # Assemble the multi-platform Tauri updater manifest (latest.json) from the
+  # per-platform fragments uploaded by the build jobs, then attach it to the
+  # release. Runs only on real tags (the build jobs only emit fragments then).
+  publish-updater-manifest:
+    needs: [build-windows, build-linux, build-macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download updater fragments
+        uses: actions/download-artifact@v4
+        with:
+          pattern: updater-frag-*
+          path: updater-frags
+          merge-multiple: true
+
+      - name: Assemble latest.json
+        run: bash scripts/assemble-latest-json.sh updater-frags
+
+      - name: Upload latest.json to release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: latest.json
           draft: false
           prerelease: true
           generate_release_notes: false
