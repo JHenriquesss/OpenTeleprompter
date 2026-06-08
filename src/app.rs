@@ -7,19 +7,13 @@ use crate::state::ui_state::UiState;
 use leptos::*;
 use std::rc::Rc;
 
-/// If launched as a picture-in-picture window, the URL carries `#pip=<script_id>`
-/// (a hash fragment, so the Tauri asset resolver still serves index.html).
-/// Returns that id so the app can boot straight into the prompter for it.
+/// If launched as a picture-in-picture window, the backend injects
+/// `window.__PIP_SCRIPT_ID` via an init script. Returns that id so the app can
+/// boot straight into the prompter for it.
 fn pip_script_id() -> Option<String> {
-    let hash = web_sys::window()?.location().hash().ok()?;
-    let h = hash.trim_start_matches('#');
-    for pair in h.split('&') {
-        let mut it = pair.splitn(2, '=');
-        if it.next() == Some("pip") {
-            return it.next().filter(|s| !s.is_empty()).map(|s| s.to_string());
-        }
-    }
-    None
+    let win = web_sys::window()?;
+    let v = js_sys::Reflect::get(&win, &wasm_bindgen::JsValue::from_str("__PIP_SCRIPT_ID")).ok()?;
+    v.as_string().filter(|s| !s.is_empty())
 }
 
 #[component]

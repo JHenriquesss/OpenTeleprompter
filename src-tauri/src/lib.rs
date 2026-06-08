@@ -92,10 +92,14 @@ pub fn run() {
             // Close (X) hides to the tray instead of quitting; the app keeps
             // running. Full exit is via the tray's Quit item. Emit a one-time
             // hint so the frontend can tell the user it is still running.
+            // Only the main window hides to the tray on close. Secondary
+            // windows (e.g. the PiP window) must close normally.
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
-                let _ = window.emit("close-to-tray", ());
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    let _ = window.emit("close-to-tray", ());
+                }
             }
 
             // Drag-and-drop import, handled in the backend (typed window event)
