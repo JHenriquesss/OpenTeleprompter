@@ -2830,7 +2830,7 @@ dependencies = [
 
 [[package]]
 name = "openprompter-rs"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "async-trait",
  "console_error_panic_hook",
@@ -2849,7 +2849,7 @@ dependencies = [
 
 [[package]]
 name = "openprompter-rs-tauri"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "chrono",
  "rusqlite",
