@@ -31,3 +31,6 @@ desktop.ini
 *.db-shm
 *.db-wal
 openprompter-rs/
+
+# Local extracted installation (user testing)
+teleprompterinstallation/

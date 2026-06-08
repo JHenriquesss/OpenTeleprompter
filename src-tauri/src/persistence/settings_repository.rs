@@ -12,21 +12,30 @@ impl SettingsRepository {
     }
 
     pub fn get(&self) -> Result<AppSettings, AppError> {
-        let conn = self.db.conn();
-        let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = 'app_settings'")?;
-        let result: Result<String, rusqlite::Error> = stmt.query_row([], |row| row.get(0));
-        match result {
-            Ok(json_str) => {
-                let settings: AppSettings = serde_json::from_str(&json_str)
-                    .map_err(|e| AppError::General(e.to_string()))?;
-                Ok(settings)
+        // Read the stored JSON in a scope that drops the connection lock before
+        // we may call `save()`. `std::sync::Mutex` is NOT re-entrant, so holding
+        // the guard across `self.save()` (which locks again on the same thread)
+        // deadlocks — which froze first-run settings loading on an empty DB.
+        let stored: Option<String> = {
+            let conn = self.db.conn();
+            let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = 'app_settings'")?;
+            match stmt.query_row([], |row| row.get::<_, String>(0)) {
+                Ok(json_str) => Some(json_str),
+                Err(rusqlite::Error::QueryReturnedNoRows) => None,
+                Err(e) => return Err(AppError::Database(e.to_string())),
             }
-            Err(rusqlite::Error::QueryReturnedNoRows) => {
+        };
+
+        match stored {
+            Some(json_str) => {
+                serde_json::from_str(&json_str).map_err(|e| AppError::General(e.to_string()))
+            }
+            None => {
+                // First run: seed and return defaults (lock now released).
                 let settings = AppSettings::default();
                 self.save(&settings)?;
                 Ok(settings)
             }
-            Err(e) => Err(AppError::Database(e.to_string())),
         }
     }
 

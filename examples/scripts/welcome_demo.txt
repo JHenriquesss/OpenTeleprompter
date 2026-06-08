@@ -1,0 +1,11 @@
+Welcome to OpenPrompter RS.
+
+This is a sample script you can import to test the teleprompter.
+
+Use the speed controls to adjust how fast the text scrolls. Press space to start and stop. Use the arrow keys to jump forward and back.
+
+[PAUSE]
+
+Mirror mode flips the text for use with a beam-splitter glass. Try toggling horizontal and vertical mirror from the prompter controls.
+
+Thanks for trying OpenPrompter. Break a leg.

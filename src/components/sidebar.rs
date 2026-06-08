@@ -6,7 +6,7 @@ use leptos::*;
 pub fn Sidebar() -> impl IntoView {
     let app_state = use_context::<AppState>().expect("AppState not provided");
     let api = use_context::<ApiCtx>().expect("AppApi not provided");
-    let (version, set_version) = create_signal("1.0.1".to_string());
+    let (version, set_version) = create_signal("1.0.2".to_string());
 
     create_effect(move |_| {
         let api = api.clone();

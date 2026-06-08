@@ -5,6 +5,16 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::window;
 
+/// Pixels to advance the prompter in one frame.
+///
+/// Scroll rate is **60 px/s per 1x speed**. This MUST stay consistent with
+/// `prompter_view::estimated_remaining`, which computes time as
+/// `remaining_px / (speed * 60)`. A regression here (e.g. the old `* 0.001`,
+/// giving 1 px/s) makes the prompter look frozen.
+pub fn scroll_delta_px(speed: f64, dt_ms: f64) -> f64 {
+    speed * 0.06 * dt_ms
+}
+
 pub fn start_scroll_loop(
     is_playing: Signal<bool>,
     scroll_y: WriteSignal<f64>,
@@ -29,8 +39,8 @@ pub fn start_scroll_loop(
                 (timestamp - last_time.get()).min(50.0)
             };
             last_time.set(timestamp);
-            let px_per_ms = speed.get() * 0.001;
-            scroll_y.update(|y| *y += px_per_ms * dt);
+            let delta = scroll_delta_px(speed.get(), dt);
+            scroll_y.update(|y| *y += delta);
         } else {
             last_time.set(0.0);
         }
