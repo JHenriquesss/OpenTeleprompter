@@ -1,8 +1,8 @@
-mod adapters;
+pub mod adapters;
 mod commands;
-mod domain;
-mod persistence;
-mod services;
+pub mod domain;
+pub mod persistence;
+pub mod services;
 mod tray;
 
 use commands::import_export::ImportExportCommandHandler;
