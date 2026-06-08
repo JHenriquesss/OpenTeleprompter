@@ -90,6 +90,21 @@ fn text_of(el: &web_sys::HtmlElement) -> String {
     el.text_content().unwrap_or_default()
 }
 
+// ---- prompter scroll math (freeze regression guard) --------------------
+
+#[wasm_bindgen_test]
+fn scroll_delta_is_60px_per_second_at_1x() {
+    use crate::prompter::engine::scroll_delta_px;
+    // 1x speed over one second must advance 60px — NOT 1px. The old engine
+    // used `speed * 0.001` (1 px/s), which made the prompter look frozen.
+    assert!((scroll_delta_px(1.0, 1000.0) - 60.0).abs() < 1e-9);
+    // Linear in both speed and elapsed time.
+    assert!((scroll_delta_px(2.0, 1000.0) - 120.0).abs() < 1e-9);
+    assert!((scroll_delta_px(0.5, 500.0) - 15.0).abs() < 1e-9);
+    // Zero elapsed time advances nothing.
+    assert!(scroll_delta_px(5.0, 0.0).abs() < 1e-9);
+}
+
 // ---- layer 1: MockApi foundation ---------------------------------------
 
 #[wasm_bindgen_test]
