@@ -197,32 +197,45 @@ Generate a keypair with:
 cargo tauri signer generate -w .updater-keys/openprompter.key
 ```
 
-### Publishing an updater-enabled release (deferred)
+### Publishing an updater-enabled release
 
-Updater *config* is wired, but no signed release is published yet. To enable
-end-to-end updates:
+`bundle.createUpdaterArtifacts: true` is enabled, so each platform's
+`cargo tauri build` emits signed updater bundles + `.sig` files. `release.yml`
+fully automates the manifest:
 
-1. Add repo secrets `TAURI_SIGNING_PRIVATE_KEY` and
-   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (the `release.yml` build steps already
-   pass them through; they are ignored while artifacts are disabled).
-2. Set `bundle.createUpdaterArtifacts: true` in `tauri.conf.json` so
-   `cargo tauri build` emits the signed updater bundles + `.sig` files.
-3. Upload the updater artifacts **and** a `latest.json` manifest to the GitHub
-   Release. `latest.json` shape:
+1. Each build job runs `scripts/updater-fragment.sh <platform-key> <bundle-glob>`
+   after upload, producing a per-platform fragment (`{signature, url}`) and
+   uploading it as a workflow artifact. Platform keys + updater bundles:
+   - `windows-x86_64` → `bundle/nsis/*-setup.exe`
+   - `linux-x86_64` → `bundle/appimage/*.AppImage`
+   - `darwin-x86_64` / `darwin-aarch64` → `bundle/macos/*_<arch>.app.tar.gz`
+     (renamed per-arch to avoid a release-asset name collision)
+2. The `publish-updater-manifest` job (`needs:` the build jobs, tag-only)
+   downloads the fragments, runs `scripts/assemble-latest-json.sh`, and uploads
+   the merged `latest.json` to the release.
 
-   ```json
-   {
-     "version": "0.13.0",
-     "notes": "Release notes",
-     "pub_date": "2026-06-07T00:00:00Z",
-     "platforms": {
-       "windows-x86_64": { "signature": "<contents of .sig>", "url": "https://github.com/.../OpenPrompter.RS_0.13.0_x64-setup.nsis.zip" }
-     }
-   }
-   ```
+Asset URLs are derived deterministically (GitHub serves asset filenames with
+spaces replaced by dots). `latest.json` shape:
 
-Until then, `check_for_update` against the missing `latest.json` simply reports
-no update (or an update-check error) — the app keeps working offline.
+```json
+{
+  "version": "1.0.0",
+  "notes": "OpenPrompter RS 1.0.0",
+  "pub_date": "2026-06-07T00:00:00Z",
+  "platforms": {
+    "windows-x86_64": { "signature": "<.sig contents>", "url": ".../releases/download/v1.0.0/OpenPrompter.RS_1.0.0_x64-setup.exe" },
+    "linux-x86_64":   { "signature": "<.sig contents>", "url": ".../OpenPrompter.RS_1.0.0_amd64.AppImage" },
+    "darwin-x86_64":  { "signature": "<.sig contents>", "url": ".../OpenPrompter.RS_x64.app.tar.gz" },
+    "darwin-aarch64": { "signature": "<.sig contents>", "url": ".../OpenPrompter.RS_aarch64.app.tar.gz" }
+  }
+}
+```
+
+**To cut a release:** add repo secrets `TAURI_SIGNING_PRIVATE_KEY` (full contents
+of `.updater-keys/openprompter.key`) + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+(empty if the key has no passphrase), then push a semver tag (`git tag v1.0.0 &&
+git push origin v1.0.0`). End-to-end auto-update is confirmed once a *later*
+version (e.g. v1.0.1) is published and an installed v1.0.0 detects it.
 
 ## Unsigned Installer Warning
 

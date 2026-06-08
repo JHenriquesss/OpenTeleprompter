@@ -4,7 +4,7 @@ resolver = "2"
 
 [package]
 name = "openprompter-rs"
-version = "0.10.0"
+version = "1.0.0"
 edition = "2021"
 
 [lib]

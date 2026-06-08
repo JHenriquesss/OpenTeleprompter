@@ -2,3 +2,5 @@
 !.gitignore
 !check.sh
 !check.ps1
+!updater-fragment.sh
+!assemble-latest-json.sh
