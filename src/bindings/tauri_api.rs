@@ -4,8 +4,22 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
-    async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+    // `catch` so a command that returns `Err` (a rejected JS promise) becomes a
+    // Rust `Err` instead of silently aborting the spawned task with no feedback
+    // (which made failed imports look like "nothing happened").
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"], catch)]
+    async fn invoke(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
+}
+
+/// Turn a rejected-invoke `JsValue` into a readable error string.
+fn js_err_to_string(e: JsValue) -> String {
+    if let Some(s) = e.as_string() {
+        return s;
+    }
+    js_sys::JSON::stringify(&e)
+        .ok()
+        .and_then(|s| s.as_string())
+        .unwrap_or_else(|| "Unknown backend error".to_string())
 }
 
 #[wasm_bindgen]
@@ -63,7 +77,7 @@ where
 {
     let args_json =
         serde_wasm_bindgen::to_value(&args).map_err(|e| format!("Serialize error: {}", e))?;
-    let result = invoke(cmd, args_json).await;
+    let result = invoke(cmd, args_json).await.map_err(js_err_to_string)?;
     serde_wasm_bindgen::from_value(result).map_err(|e| format!("Invoke error: {}", e))
 }
 
@@ -73,7 +87,7 @@ where
 {
     let args_json =
         serde_wasm_bindgen::to_value(&args).map_err(|e| format!("Serialize error: {}", e))?;
-    invoke(cmd, args_json).await;
+    invoke(cmd, args_json).await.map_err(js_err_to_string)?;
     Ok(())
 }
 

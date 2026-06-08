@@ -50,6 +50,7 @@ pub fn AppShell() -> impl IntoView {
         let api = drop_api.clone();
         let toast = drop_toast.clone();
         crate::bindings::tauri_api::on_file_drop(move |paths| {
+            toast.add_info(&format!("Importing {} file(s)…", paths.len()));
             for path in paths {
                 let api = api.clone();
                 let toast = toast.clone();
