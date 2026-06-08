@@ -29,7 +29,10 @@ pub fn start_scroll_loop(
                 (timestamp - last_time.get()).min(50.0)
             };
             last_time.set(timestamp);
-            let px_per_ms = speed.get() * 0.001;
+            // 60 px/s per 1x speed. The previous 0.001 (1 px/s per 1x) made the
+            // prompter look frozen, and disagreed with `estimated_remaining`,
+            // which assumes px/s == speed * 60. Keep both in sync.
+            let px_per_ms = speed.get() * 0.06;
             scroll_y.update(|y| *y += px_per_ms * dt);
         } else {
             last_time.set(0.0);

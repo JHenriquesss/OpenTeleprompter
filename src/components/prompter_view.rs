@@ -954,7 +954,7 @@ pub fn PrompterView() -> impl IntoView {
             }}
 
             <div style="flex: 1; overflow: hidden; padding-top: 60px; padding-bottom: 20px;">
-                <div node_ref=text_ref style={text_style}>
+                <div id="prompter-text" node_ref=text_ref style={text_style}>
                     {move || {
                         let text = content.get().unwrap_or_default();
                         let segments = split_markers(&text);

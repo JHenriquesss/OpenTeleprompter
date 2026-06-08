@@ -32,26 +32,30 @@ pub fn export_script_to_txt(
         .map_err(|e| e.to_string())
 }
 
+// NOTE: these dialog commands are intentionally synchronous. They call the
+// `blocking_pick_file` / `blocking_save_file` dialog APIs, which block the
+// calling thread until the user responds. Tauri runs sync commands on a
+// dedicated thread pool, so blocking there is safe. Marking them `async` would
+// run them on the async executor and block it, which could hang the dialog (the
+// "Import did nothing" symptom).
 #[tauri::command]
-pub async fn open_file_dialog(app: AppHandle) -> Result<Option<String>, String> {
+pub fn open_file_dialog(app: AppHandle) -> Result<Option<String>, String> {
     Ok(adapters::dialog::pick_file_to_open(&app))
 }
 
 #[tauri::command]
-pub async fn save_file_dialog(app: AppHandle) -> Result<Option<String>, String> {
+pub fn save_file_dialog(app: AppHandle) -> Result<Option<String>, String> {
     Ok(adapters::dialog::pick_file_to_save(&app))
 }
 
 #[tauri::command]
-pub async fn read_text_file(path: String) -> Result<Option<String>, String> {
+pub fn read_text_file(path: String) -> Result<Option<String>, String> {
+    // Read directly and surface any OS error, rather than silently returning
+    // `None` when an `exists()` probe fails (which made import fail quietly).
     let p = Path::new(&path);
-    if p.exists() {
-        adapters::file_system::read_text_file(p)
-            .map(Some)
-            .map_err(|e| e.to_string())
-    } else {
-        Ok(None)
-    }
+    adapters::file_system::read_text_file(p)
+        .map(Some)
+        .map_err(|e| format!("Could not read '{}': {}", path, e))
 }
 
 #[tauri::command]
