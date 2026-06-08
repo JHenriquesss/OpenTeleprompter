@@ -49,7 +49,8 @@
 | **Linux AppImage large size** | 78 MB due to bundled webkit2gtk runtime. Could strip or compress, or document minimum size expectation |
 | **Checksum file path cosmetics (Linux/macOS)** | SHA256SUMS files use build-directory paths. `sha256sum --check` requires same directory structure. Manual hash comparison is the primary workflow. Could fix with `sha256sum --basename` or `cd` + `sha256sum *.AppImage` |
 | **First signed updater release** | Updater is wired (Phase 14) but no signed release is published yet. Needs repo secrets `TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD`, `bundle.createUpdaterArtifacts: true`, and a `latest.json` manifest on a public release. See docs/release.md → Auto-Update |
-| **macOS Intel runner queue (`macos-13`)** | The Intel matrix leg is correct (parity with the green `macos-14` leg) but GitHub `macos-13` runners are scarce — a Phase 15 verification dispatch left it queued >70 min unscheduled. First real Intel DMG lands on the next tagged release; if Intel queues stay pathological, consider dropping Intel or building it only on tags |
+| **macOS Intel runner queue (`macos-13`)** | The Intel matrix leg is correct (parity with the green `macos-14` leg) but GitHub `macos-13` runners are scarce — stalled unscheduled in Phase 15 (>70 min) AND the v1.0.0 release run (cancelled). |
+| **v1.0.0 missing Intel-mac + release.yml hardening** | v1.0.0 shipped WITHOUT the Intel-mac DMG/updater (macos-13 never scheduled); `latest.json` was finalized manually for win/linux/mac-arm and the release manually promoted to non-prerelease. Follow-up: (1) `release.yml` set `prerelease` by tag; (2) split macOS into separate arm/intel jobs so `publish-updater-manifest` needs only win+linux+mac-arm (Intel never blocks `latest.json`); (3) cut v1.0.1 to ship Intel-mac. Tracked as a spawned task. |
 
 ## Resolved
 

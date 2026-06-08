@@ -4,7 +4,9 @@ Thank you for downloading OpenPrompter RS!
 
 This guide will help you install and run the app on your computer.
 
-OpenPrompter RS is currently in **beta** — it works well, but you may encounter small issues. All builds are **unsigned**, which means your operating system may show a warning when you first run the app. This is expected for open-source beta software. We explain how to handle it below.
+OpenPrompter RS is now at **v1.0.0** (first stable release). All builds are **unsigned**, which means your operating system may show a warning when you first run the app. This is expected for open-source software that hasn't paid for code-signing certificates. We explain how to handle it below.
+
+The app **updates itself**: when a newer version is published, it shows an "Update available" banner you can install with one click (no reinstall). See [Automatic updates](#automatic-updates).
 
 ---
 
@@ -19,7 +21,10 @@ Each release on GitHub includes several files. Here is which one to pick:
 | **Windows** (enterprise) | `*_x64_en-US.msi` | The MSI package. Works with Group Policy. Note: reinstall may fail — see notes below. |
 | **Linux** (any distro) | `*.AppImage` | Works on every Linux distribution. Make executable and run. No install needed. |
 | **Linux** (Debian/Ubuntu) | `*.deb` | Installs system-wide. Run `sudo dpkg -i *.deb`. |
-| **macOS** (Apple Silicon) | `*_aarch64.dmg` | For M1, M2, M3 Macs. Open the DMG and drag to Applications. |
+| **Linux** (Fedora/RHEL/openSUSE) | `*.rpm` | Installs system-wide. Run `sudo rpm -i *.rpm` (or `dnf install`). |
+| **macOS** (Apple Silicon) | `*_aarch64.dmg` | For M1/M2/M3/M4 Macs. Open the DMG and drag to Applications. |
+
+> **Intel macOS:** a native Intel (`x86_64`) DMG is added in a follow-up release (v1.0.1). On Apple Silicon, use the `aarch64` DMG.
 
 **Not sure?** Download the `*_x64-setup.exe` (Windows) or `*.AppImage` (Linux). They work for most people.
 
@@ -29,10 +34,10 @@ Each release on GitHub includes several files. Here is which one to pick:
 
 Each release now includes **SHA256 checksum files**. A checksum is a unique digital fingerprint of a file. You can use it to confirm the file you downloaded is exactly the same as the one we published — no corruption, no tampering.
 
-The release contains three checksum files:
+The release contains per-platform checksum files:
 - `SHA256SUMS-windows.txt` for Windows files
-- `SHA256SUMS-linux.txt` for Linux files
-- `SHA256SUMS-macos.txt` for macOS files
+- `SHA256SUMS-linux.txt` for Linux files (AppImage, deb, RPM)
+- `SHA256SUMS-macos-aarch64.txt` (and `-macos-x64.txt` once Intel ships) for macOS files
 
 **How to verify (optional):**
 
@@ -69,8 +74,8 @@ Both commands check every file listed in the checksum file and print "OK" for ea
 ### Option 1: Setup Installer (recommended for most users)
 
 1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/OpenTeleprompter/releases).
-2. Find the latest release (look for `v0.7.0-beta.1` or newer).
-3. Download the file ending in `-setup.exe` (for example, `OpenPrompter.RS_0.7.0_x64-setup.exe`).
+2. Find the latest release (`v1.0.0` or newer).
+3. Download the file ending in `-setup.exe` (for example, `OpenPrompter.RS_1.0.0_x64-setup.exe`).
 4. Double-click the downloaded file to run the installer.
 5. Follow the installer prompts.
 
@@ -91,7 +96,7 @@ The app is 100% open-source. You can [inspect the source code](https://github.co
 
 If you need to deploy the app across multiple machines, download the `.msi` file instead. This is the Windows Installer package.
 
-- Download `OpenPrompter.RS_0.7.0_x64_en-US.msi`.
+- Download `OpenPrompter.RS_1.0.0_x64_en-US.msi`.
 - Double-click to install, or deploy via Group Policy.
 
 ### Option 3: Portable ZIP (no installation required)
@@ -112,7 +117,7 @@ Your scripts and settings are saved in the same folder. Nothing is written to th
 
 1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/OpenTeleprompter/releases).
 2. Find the latest release.
-3. Download the `.AppImage` file (for example, `OpenPrompter.RS_0.7.0_amd64.AppImage`).
+3. Download the `.AppImage` file (for example, `OpenPrompter.RS_1.0.0_amd64.AppImage`).
 4. Open a terminal in the download folder.
 5. Make the file executable:
 
@@ -134,7 +139,7 @@ That's it! No installation needed. The AppImage contains everything the app need
 
 If you use Debian, Ubuntu, or a derivative (like Mint, Pop!_OS, etc.):
 
-1. Download the `.deb` file (for example, `OpenPrompter.RS_0.7.0_amd64.deb`).
+1. Download the `.deb` file (for example, `OpenPrompter.RS_1.0.0_amd64.deb`).
 2. Open a terminal in the download folder.
 3. Install the package:
 
@@ -144,7 +149,7 @@ If you use Debian, Ubuntu, or a derivative (like Mint, Pop!_OS, etc.):
 
 4. Launch OpenPrompter RS from your app menu.
 
-**Note:** Linux packages are community beta builds. They are not signed or added to official repositories.
+**Note:** Linux packages are not signed or added to official repositories. Install them with the commands above.
 
 ---
 
@@ -152,7 +157,7 @@ If you use Debian, Ubuntu, or a derivative (like Mint, Pop!_OS, etc.):
 
 1. Go to the [GitHub Releases page](https://github.com/JHenriquesss/OpenTeleprompter/releases).
 2. Find the latest release.
-3. Download the `.dmg` file (for example, `OpenPrompter.RS_0.7.0_aarch64.dmg`).
+3. Download the `.dmg` file (for example, `OpenPrompter.RS_1.0.0_aarch64.dmg`).
 4. Double-click the `.dmg` file to open it.
 5. Drag the `OpenPrompter RS` app into your `Applications` folder.
 
@@ -172,6 +177,28 @@ To open it anyway:
   ```
 
 After that, the app will open normally.
+
+---
+
+## Automatic updates
+
+OpenPrompter RS checks for updates on launch. When a newer version is available,
+an **"Update available"** banner appears at the top of the window with **Install**
+and **Dismiss** buttons. Installing downloads the update, applies it, and
+relaunches — no manual reinstall. Updates are **never** installed silently; you
+always choose. If you're offline or already up to date, nothing happens.
+
+Updates are cryptographically verified (minisign) before they install.
+
+## System tray
+
+The app lives in your system tray:
+
+- **Closing the window (X)** hides it to the tray — the app keeps running. A
+  one-time hint reminds you it's still there.
+- **Left-click** the tray icon to show/hide the window.
+- **Right-click** the tray icon for **Show / Hide / Quit**. Use **Quit** to exit
+  the app completely.
 
 ---
 

@@ -19,5 +19,5 @@
 | `06-open-threads.md` | First signed updater release (deferred), macos-13 Intel runner queue, AppImage size, tauri-cli compile time; resolved: Phase 13 CI threads, Phase 14 auto-update, Phase 15 macOS Intel + Linux RPM, Phase 16 tray icon |
 
 ---
-last-consolidated: 2026-06-07T23:55
-sessions: 22 (Phase 1→Phase 16; Phase 13 CI maintenance, Phase 14 self-update, Phase 15 macOS Intel + Linux RPM, Phase 16 system tray)
+last-consolidated: 2026-06-08T04:00
+sessions: 23 (Phase 1→Phase 19; v1.0.0 shipped — first public stable release with auto-update for win/linux/mac-arm; Phase 17 release+updater-manifest, Phase 19 docs refresh)

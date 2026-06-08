@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.0.0] — 2026-06-08
+
+First stable release. Cross-platform, offline, auto-updating desktop teleprompter.
+
+### Teleprompter
+- Fullscreen prompter with smooth `requestAnimationFrame` scrolling
+- Variable speed (0.25×–10×), speed presets, and custom speed input
+- Horizontal + vertical mirror modes for teleprompter hardware
+- Adjustable typography (font size, line height, text width)
+- Countdown timer, reading-guide band, progress % + estimated time remaining
+- Pause markers (`[pause:N]` / `[breath]`) highlighted in-text
+- Rehearsal mode (word count + estimated reading time)
+- Resume playback (per-script scroll/speed/font/mirror) with resume dialog
+- Jump controls (Arrow ±5s, Shift+Arrow ±20s) with toast feedback
+- Full keyboard shortcuts with on-screen help (`H`); auto-hiding floating controls
+
+### Library & editing
+- Script library: create, edit, duplicate, delete, search
+- Import / export `.txt` via native OS file dialogs
+- Auto-save (debounced) with status; `Ctrl+S`; delete confirmation modal
+- Dark / light theme, persisted; settings persisted to local SQLite
+
+### Platform & distribution
+- Windows (MSI, NSIS, portable ZIP), Linux (AppImage, deb, RPM), macOS DMG (Apple Silicon; Intel in v1.0.1)
+- **System tray** — close-to-tray (app keeps running); left-click toggle; Show/Hide/Quit menu
+- **Automatic updates** via `tauri-plugin-updater` — launch-time check, one-click install, minisign-verified, never silent
+- Per-platform SHA256 checksums on every release
+
+### Engineering
+- Tauri v2 + Rust backend (rusqlite), Leptos CSR → WASM frontend (no JavaScript)
+- Fully offline: no cloud, accounts, telemetry, or AI
+- Mockable frontend API (`AppApi` trait) enabling component tests
+- 85 automated tests (18 backend + 67 WASM); CI gate (fmt, clippy `-D warnings`, build, tests)
+
 ## [0.1.0] — 2026-06-06
 
 ### Added
