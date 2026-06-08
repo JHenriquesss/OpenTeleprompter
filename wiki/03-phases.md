@@ -769,3 +769,22 @@ After containment, created a new clean public repository:
 - `CHANGELOG.md`: `[1.0.0]` entry consolidating the teleprompter/library/platform/engineering feature set.
 - `docs/install.md`: v1.0.0 + filenames, RPM row, per-arch macOS checksums, new **Automatic updates** + **System tray** sections, beta→stable wording.
 - Screenshots: regeneration with synthetic content deferred (needs GUI capture; tracked).
+
+## Phase 18: Cross-platform Verification (v1.0.0)
+
+**Scope:** verify the published v1.0.0 release. Split: automated (me) + GUI manual smoke (user).
+**Outcome:** closed ok-partial.
+
+- **Automated (done):** all 12 v1.0.0 release assets resolve (HTTP 200); SHA256 integrity MATCH for win `-setup.exe` + linux AppImage + mac-arm DMG; `latest.json` endpoint 200 with 3 valid platform entries.
+- **Manual (deferred to user):** install/launch/library/dialogs/prompter/tray/update-check on Win/Linux/macOS; then promote README platform table. `mne-1` kept README from claiming manual testing pre-confirmation.
+
+## Phase 20: Release-pipeline Hardening (v1.0.1)
+
+**Scope:** fix the v1.0.0 release friction. Infra + version only.
+**Merged:** PR #12 (`5dd7af8`) · **tag `v1.0.1`**.
+
+- **prerelease by tag:** `prerelease: ${{ contains(github.ref_name, '-') }}` on all upload steps → stable tags publish as full (non-prerelease) releases, so the updater endpoint (`releases/latest/...`) resolves with no manual promote (v1.0.0 needed a hand-promote).
+- **Intel never blocks auto-update:** `build-macos` matrix split into independent `build-macos-arm` (macos-14) + `build-macos-intel` (macos-13); `publish-updater-manifest` `needs: [build-windows, build-linux, build-macos-arm]` only. A queue-stalled Intel runner no longer prevents `latest.json` (Intel fragment included when present).
+- **Checksum names normalized** (spaces → dots) to match GitHub-served asset names → `sha256sum --check` works.
+- Version 1.0.0 → 1.0.1; CHANGELOG `[1.0.1]`.
+- **Verified on v1.0.1:** win + linux + mac-arm + `publish-updater-manifest` all SUCCESS; release `prerelease=false` automatically; endpoint serves v1.0.1 (3 platforms); checksums dot-named. `build-macos-intel` still queue-stalled but **non-blocking** (Intel-mac DMG not yet shipped). must-exist 6/6.

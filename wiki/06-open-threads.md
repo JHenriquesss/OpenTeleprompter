@@ -49,8 +49,7 @@
 | **Linux AppImage large size** | 78 MB due to bundled webkit2gtk runtime. Could strip or compress, or document minimum size expectation |
 | **Checksum file path cosmetics (Linux/macOS)** | SHA256SUMS files use build-directory paths. `sha256sum --check` requires same directory structure. Manual hash comparison is the primary workflow. Could fix with `sha256sum --basename` or `cd` + `sha256sum *.AppImage` |
 | **First signed updater release** | Updater is wired (Phase 14) but no signed release is published yet. Needs repo secrets `TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD`, `bundle.createUpdaterArtifacts: true`, and a `latest.json` manifest on a public release. See docs/release.md → Auto-Update |
-| **macOS Intel runner queue (`macos-13`)** | The Intel matrix leg is correct (parity with the green `macos-14` leg) but GitHub `macos-13` runners are scarce — stalled unscheduled in Phase 15 (>70 min) AND the v1.0.0 release run (cancelled). |
-| **v1.0.0 missing Intel-mac + release.yml hardening** | v1.0.0 shipped WITHOUT the Intel-mac DMG/updater (macos-13 never scheduled); `latest.json` was finalized manually for win/linux/mac-arm and the release manually promoted to non-prerelease. Follow-up: (1) `release.yml` set `prerelease` by tag; (2) split macOS into separate arm/intel jobs so `publish-updater-manifest` needs only win+linux+mac-arm (Intel never blocks `latest.json`); (3) cut v1.0.1 to ship Intel-mac. Tracked as a spawned task. |
+| **macOS Intel build not yet shipped (`macos-13` runner queue)** | GitHub `macos-13` (Intel) runners are chronically queue-stalled — never scheduled in Phase 15, the v1.0.0 run, or the v1.0.1 run. As of Phase 20 this is **non-blocking** (the manifest/release publish without it), but no Intel-mac DMG/updater entry exists in any release yet. It will appear whenever a `macos-13` runner frees on a future tag, or via a manual re-run of `build-macos-intel`. Apple-Silicon Macs are fully covered. |
 
 ## Resolved
 
@@ -217,6 +216,15 @@
 |--------|-----------|
 | macOS Intel builds | `build-macos` matrixed over `macos-13` (native Intel x86_64) + `macos-14` (native aarch64). Per-arch DMG + `SHA256SUMS-macos-<arch>.txt`. No cross-compile |
 | Linux RPM | Added `bundle/rpm/*.rpm` (from Tauri's `"all"` target, pure-Rust builder — no `rpmbuild`) to Linux checksum + upload globs. Fedora/RHEL/openSUSE covered |
+
+### Phase 17 / 20 (release + updater + hardening)
+
+| Thread | Resolution |
+|--------|-----------|
+| First signed updater release | v1.0.0 shipped with `createUpdaterArtifacts` + per-platform fragment scripts + `publish-updater-manifest` → signed `latest.json`. Auto-update live for win/linux/mac-arm. |
+| Stable release marked prerelease (updater endpoint 404) | Phase 20: `prerelease` set by tag (`contains(ref_name,'-')`); stable tags auto-publish full releases. v1.0.1 verified `prerelease=false` automatically. |
+| Intel runner blocking `latest.json` | Phase 20: macOS split into independent arm/intel jobs; manifest needs win+linux+mac-arm only. v1.0.1 manifest auto-published while Intel stayed queued. |
+| Checksum filename mismatch (`sha256sum -c`) | Phase 20: `SHA256SUMS-*` basenames normalized spaces→dots to match GitHub asset names. |
 
 ### Phase 16 (system tray)
 
