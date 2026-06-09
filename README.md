@@ -18,7 +18,9 @@ Screenshots temporarily removed while demo images are regenerated with synthetic
 
 ## Features
 
-- **Script Library** — create, edit, save, duplicate, delete, search, import (`.txt`), and export (`.txt`) scripts
+- **Script Library** — create, edit, save, duplicate, delete, search, import (`.txt`, `.md`, `.pdf`, `.docx`), and export (`.txt`) scripts
+- **Drag & drop import** — drop `.txt` / `.md` / `.pdf` / `.docx` files onto the window to import them
+- **Picture-in-picture** — pin the prompter as a small always-on-top floating window (📌 button) to read over another app (call/recording)
 - **Teleprompter Mode** — fullscreen playback with smooth `requestAnimationFrame` scrolling
 - **Adjustable typography** — font size, line height, text width
 - **Variable speed** — scroll speed from 0.25× to 10×
@@ -39,7 +41,7 @@ Screenshots temporarily removed while demo images are regenerated with synthetic
 - **Automatic updates** — built-in updater checks on launch and offers one-click install of new releases (cryptographically verified, never silent)
 - **Cross-platform packaging** — Windows (MSI / NSIS / portable ZIP), Linux (AppImage / deb / RPM), macOS (DMG, Apple Silicon + Intel)
 - **Speed presets** — one-click speed buttons (0.5×, 1×, 1.5×, 2×, 3×) in the floating controls
-- **Custom speed input** — type any speed (0.25×–5.0×) directly in the controls
+- **Custom speed input** — type any speed (0.25×–5.0×) directly in the controls; `◀◀`/`▶▶` and Up/Down nudge speed in fine 0.05 steps
 - **Pause markers** — embed `[pause:N]` or `[breath]` in scripts for automatic pauses during playback (pauses highlighted in red)
 - **Rehearsal mode** — dedicated practice mode with word count and estimated reading time, launched from the script library
 - **Resume playback** — saves scroll position, speed, font size, and mirror mode per script; resume dialog on re-entry
@@ -51,7 +53,7 @@ Screenshots temporarily removed while demo images are regenerated with synthetic
 - **Toast notifications** — non-blocking success/error/warning/info toasts for all user actions; 4 s auto-dismiss
 - **Centralized error messages** — all error feedback unified through the toast system instead of scattered inline error banners
 - **Mockable frontend API** — components depend on an `AppApi` trait (production `RealTauriApi`, tests `MockApi`) injected via Leptos context, so UI logic is testable without a running backend
-- **Test suite** — 18 backend (`cargo test`) + 67 WASM (`wasm-pack test --headless --chrome`) = 85 tests: pure-logic/state, plus component integration tests that mount real components against a mock API
+- **Test suite** — backend unit + integration (`cargo test`: real SQLite service/persistence flows + document import for `.txt`/`.md`/`.docx`) plus WASM component tests (`wasm-pack test --headless --chrome`) that mount real components against a mock API
 
 ## Keyboard Shortcuts
 
@@ -78,26 +80,26 @@ Screenshots temporarily removed while demo images are regenerated with synthetic
 
 **OpenPrompter RS is free, open-source, and works entirely offline.** No account. No login. No payment. No cloud. No telemetry.
 
-The current stable release is **[v1.0.0](https://github.com/JHenriquesss/OpenTeleprompter/releases/latest)**. The app auto-updates to future releases.
+The current stable release is **[v1.1.0](https://github.com/JHenriquesss/OpenTeleprompter/releases/latest)**. The app auto-updates to future releases.
 
 | Platform | Recommended download | Also available |
 |----------|---------------------|----------------|
 | Windows | `*_x64-setup.exe` — NSIS installer (handles upgrades) | MSI (enterprise), portable ZIP (no install) |
 | Linux | `*.AppImage` — works on any distro, no install needed | `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL) |
-| macOS (Apple Silicon) | `*_aarch64.dmg` — drag to Applications | Intel `x86_64` DMG lands in v1.0.1 |
+| macOS (Apple Silicon) | `*_aarch64.dmg` — drag to Applications | Intel `x86_64` DMG |
 
 All builds are **unsigned**. Your operating system may show a warning — this is normal for open-source software that hasn't paid for code signing certificates. See the [installation guide](docs/install.md) for step-by-step help.
 
 ### Quick start
 
-**Windows:** Download `OpenPrompter.RS_1.0.0_x64-setup.exe`, double-click, follow the installer.
+**Windows:** Download `OpenPrompter.RS_1.1.0_x64-setup.exe`, double-click, follow the installer.
 
-**Linux:** Download `OpenPrompter.RS_1.0.0_amd64.AppImage`, run:
+**Linux:** Download `OpenPrompter.RS_1.1.0_amd64.AppImage`, run:
 ```bash
 chmod +x *.AppImage && ./OpenPrompter.RS_*.AppImage
 ```
 
-**macOS:** Download `OpenPrompter.RS_1.0.0_aarch64.dmg`, open it, drag the app to Applications. Right-click → Open on first launch (unsigned).
+**macOS:** Download `OpenPrompter.RS_1.1.0_aarch64.dmg`, open it, drag the app to Applications. Right-click → Open on first launch (unsigned).
 
 > Read the full [installation guide](docs/install.md) — it explains SmartScreen, Gatekeeper, and which file to pick.
 
@@ -108,7 +110,7 @@ chmod +x *.AppImage && ./OpenPrompter.RS_*.AppImage
 | Windows (x64) | ✅ Supported | MSI + NSIS + portable ZIP. Primary, most-tested platform. |
 | Linux (x86_64) | ✅ Supported | AppImage + deb + RPM. |
 | macOS (Apple Silicon) | ✅ Supported | `aarch64` DMG. |
-| macOS (Intel x86_64) | 🔜 v1.0.1 | Native Intel DMG arrives in the next release. |
+| macOS (Intel x86_64) | ✅ Supported | Native `x86_64` DMG. |
 
 All platforms are built and published by CI for every release. Windows receives the most manual testing. If you hit an issue on any platform, please [open an issue](https://github.com/JHenriquesss/OpenTeleprompter/issues) — feedback helps.
 
