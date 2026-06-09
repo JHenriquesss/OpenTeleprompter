@@ -299,6 +299,42 @@ async fn prompter_view_shows_resume_dialog_when_state_exists() {
     );
 }
 
+#[wasm_bindgen_test]
+async fn exiting_prompter_saves_current_scroll_not_zero() {
+    // Regression: Exit zeroed scroll_y synchronously before the async
+    // save_playback_state read it, so it persisted 0 and "resume where you left
+    // off" always restarted at the top. The save must capture the real position.
+    let mock = Rc::new(MockApi::new().with_scripts(vec![mk_script("9", "Talk", "a b c d e")]));
+    let api: ApiCtx = mock.clone();
+    let app_state = AppState::new();
+    app_state.selected_script_id.set(Some("9".to_string()));
+    let playback = PlaybackState::new();
+
+    let container = mount(move || {
+        provide_context::<ApiCtx>(api);
+        provide_context(app_state);
+        provide_context(playback);
+        provide_context(UiState::new());
+        provide_context(ToastState::new());
+        view! { <PrompterView /> }
+    });
+    settle().await;
+
+    // Simulate the user having scrolled partway through.
+    playback.scroll_y.set(1234.0);
+
+    assert!(click_text(&container, "✕ Exit"), "Exit button not found");
+    settle().await;
+
+    let saved = mock.saved_playback("9");
+    assert!(saved.is_some(), "exit did not save playback state");
+    assert_eq!(
+        saved.unwrap().scroll_offset_px,
+        1234.0,
+        "exit saved the wrong scroll position — resume regression"
+    );
+}
+
 // ---- Phase 12: import/export/duplicate/delete flows ---------------------
 //
 // These exercise the real ScriptLibrary action handlers by dispatching DOM

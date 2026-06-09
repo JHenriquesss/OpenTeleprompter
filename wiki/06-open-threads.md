@@ -51,7 +51,32 @@
 | **First signed updater release** | Updater is wired (Phase 14) but no signed release is published yet. Needs repo secrets `TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD`, `bundle.createUpdaterArtifacts: true`, and a `latest.json` manifest on a public release. See docs/release.md → Auto-Update |
 | **macOS Intel build not yet shipped (`macos-13` runner queue)** | GitHub `macos-13` (Intel) runners are chronically queue-stalled — never scheduled in Phase 15, the v1.0.0 run, or the v1.0.1 run. As of Phase 20 this is **non-blocking** (the manifest/release publish without it), but no Intel-mac DMG/updater entry exists in any release yet. It will appear whenever a `macos-13` runner frees on a future tag, or via a manual re-run of `build-macos-intel`. Apple-Silicon Macs are fully covered. |
 
+## Active (as of v1.1.x, 2026-06-09)
+
+| Thread | Detail |
+|--------|--------|
+| **Public `latest` release was broken (v1.0.0/v1.0.1)** | Those shipped with `withGlobalTauri` off → all buttons dead, plus a first-run settings deadlock. **v1.1.x supersedes them.** Existing 1.0.x installs **cannot auto-update** (the update check also went through the broken IPC) → those users must re-download. New downloads of v1.1.x are fine. |
+| **v1.1.0 / v1.1.1 release tags orphaned** | `v1.1.0` and `v1.1.1` tags were pushed then their release runs **cancelled** (bugs found before publish) — tags exist with no GitHub Release attached. Harmless (not "latest"). The next clean tag is the real release. Remote-tag delete needs explicit user auth (auto-mode blocks destructive remote-ref ops). |
+| **E2E (`e2e/`) is non-blocking** | `tauri-driver` + WebdriverIO launches the binary but headless **WebKitGTK on the CI runner won't render the WASM page** (blank) → `continue-on-error: true`. Integration coverage is the manual WebView2-CDP suite `e2e/cdp/regression.mjs` (Windows). The `validate` job (fmt/check/cargo test/clippy/trunk/wasm-pack) is the real gate. |
+| **DB path is launch-dir-relative** | `adapters/file_system.rs::get_app_data_dir` joins `current_dir()` (not the OS app-data dir) → the SQLite file location depends on where the exe is launched. Pre-existing; not fixed. Should move to a proper per-user app-data dir. |
+| **OS code signing still out of scope** | SmartScreen/Gatekeeper warnings remain (unsigned). Removal = paid Authenticode/notarization (Azure Trusted Signing ~$120/yr, OV/EV cert, Apple $99/yr). Project policy = free/unsigned; updater minisign signing is separate and done. |
+
 ## Resolved
+
+### v1.1.x (critical fixes + features, 2026-06-08/09)
+
+| Thread | Resolution |
+|--------|-----------|
+| **Dead buttons** (shipped 1.0.x) | `app.withGlobalTauri: true` — the global `__TAURI__` was never injected, so every `invoke` threw. |
+| **Silent command failures** | `#[wasm_bindgen(catch)]` on `invoke` → backend `Err` surfaces as a toast instead of aborting the task. |
+| **File import did nothing** | `import_script_from_txt` sent snake `file_name`; Tauri v2 wants camelCase `fileName`. Also dialog deadlock fixed (non-blocking picker + channel, async command). |
+| **Only `.txt` import** | `adapters/document.rs` now extracts `.txt`/`.md`/`.pdf`/`.docx` to plain text (`pdf-extract`, `zip`+`quick-xml`, regex markdown strip). |
+| **No drag-and-drop** | Backend `WindowEvent::DragDrop` imports supported files + emits `library-changed`; frontend refreshes. |
+| **Prompter looked frozen** | Scroll `*0.001`→`*0.06` (60 px/s per 1×) via pure `scroll_delta_px`; matches `estimated_remaining`. |
+| **First-run settings deadlock** | `SettingsRepository::get()` drops the conn lock before seeding defaults (std Mutex not re-entrant). |
+| **Resume returned to 0%** | Exit zeroed `scroll_y` before the async save read it. Capture sync on exit; reset on entry. |
+| **Buttons needed two clicks** | Prompter `mousemove` recreated the controls overlay every move; now writes `show_controls` only on hidden→shown. |
+| **PiP blank / couldn't close / stayed pinned on exit** | Second window loaded `about:blank`; switched to pinning the main window (`set_pip`), auto-unpin on prompter `on_cleanup`. |
 
 ### Phase 1a (stabilization)
 

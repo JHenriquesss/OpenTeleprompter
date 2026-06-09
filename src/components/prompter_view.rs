@@ -54,6 +54,13 @@ pub fn PrompterView() -> impl IntoView {
     let toast = expect_context::<ToastState>();
     let api = use_context::<ApiCtx>().expect("AppApi not provided");
 
+    // Start every prompter entry from the top. The saved position is offered via
+    // the resume dialog (load_playback_state) rather than left in the shared
+    // scroll signal, so switching scripts never starts mid-way and resume is
+    // explicit. (Resetting on *exit* instead clobbered the position before the
+    // async save could read it.)
+    playback.scroll_y.set(0.0);
+
     let (settings_loaded, set_settings_loaded) = create_signal(false);
     let (show_controls, set_show_controls) = create_signal(true);
     let (countdown_value, set_countdown_value) = create_signal::<i32>(-1);
@@ -293,8 +300,10 @@ pub fn PrompterView() -> impl IntoView {
                     move || {
                         exit_fullscreen_if_open();
                         scv.set(-1);
+                        // Don't reset scroll_y here: pausing (is_playing=false)
+                        // triggers the save effect, which must read the real
+                        // position. The prompter resets scroll on entry instead.
                         pb.is_playing.set(false);
-                        pb.scroll_y.set(0.0);
                         av.view.set(View::Library);
                     }
                 }),
@@ -433,7 +442,15 @@ pub fn PrompterView() -> impl IntoView {
     };
 
     view! {
-        <div style={container_style} on:mousemove=move |_| set_show_controls.set(true)>
+        <div style={container_style} on:mousemove=move |_| {
+            // Only write on the hidden->shown transition. Writing on every
+            // mousemove re-rendered the controls overlay constantly, which
+            // recreated the buttons mid-click and ate the first click ("needs
+            // two clicks").
+            if !show_controls.get_untracked() {
+                set_show_controls.set(true);
+            }
+        }>
 
             {move || {
                 if ui.reading_guide.get() {
@@ -723,25 +740,32 @@ pub fn PrompterView() -> impl IntoView {
                                              clear_countdown_interval(&ih);
                                              scd.set(-1);
                                              if let Some(sid) = ap.selected_script_id.get() {
+                                                 // Capture the position SYNCHRONOUSLY before any
+                                                 // reset, then save — otherwise the async save read
+                                                 // scroll_y after it was zeroed and persisted 0,
+                                                 // breaking resume.
                                                  let sid2 = sid.clone();
-                                                 let pb2 = pb;
-                                                 let ui3 = ui2;
+                                                 let scroll = pb.scroll_y.get();
+                                                 let speed = pb.speed.get();
+                                                 let fs = ui2.font_size.get();
+                                                 let mm = ui2.mirror_mode.get();
+                                                 let mv = ui2.mirror_vertical.get();
                                                  let api = api.clone();
                                                  spawn_local(async move {
-                                                     let _ = api.save_playback_state(
-                                                         &sid2,
-                                                         pb2.scroll_y.get(),
-                                                         pb2.speed.get(),
-                                                         Some(ui3.font_size.get()),
-                                                         None,
-                                                         Some(ui3.mirror_mode.get()),
-                                                         Some(ui3.mirror_vertical.get()),
-                                                     )
-                                                     .await;
+                                                     let _ = api
+                                                         .save_playback_state(
+                                                             &sid2,
+                                                             scroll,
+                                                             speed,
+                                                             Some(fs),
+                                                             None,
+                                                             Some(mm),
+                                                             Some(mv),
+                                                         )
+                                                         .await;
                                                  });
                                              }
                                              pb.is_playing.set(false);
-                                             pb.scroll_y.set(0.0);
                                              ap.view.set(View::Library);
                                          }
                                     }

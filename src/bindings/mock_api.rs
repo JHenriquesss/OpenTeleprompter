@@ -70,7 +70,7 @@ impl MockApi {
                 files: HashMap::new(),
                 open_dialog_result: None,
                 save_dialog_result: None,
-                version: "1.1.1".to_string(),
+                version: "1.1.2".to_string(),
                 next_id: 1,
                 force_error: None,
                 fail_commands: Vec::new(),
@@ -188,6 +188,12 @@ impl MockApi {
 
     pub fn playback_count(&self) -> usize {
         self.inner.borrow().playback.len()
+    }
+
+    /// The most recently saved/stored playback state for a script (for asserting
+    /// that exit/pause persisted the real scroll position, not 0).
+    pub fn saved_playback(&self, script_id: &str) -> Option<ScriptPlaybackStateData> {
+        self.inner.borrow().playback.get(script_id).cloned()
     }
 
     // ---- helpers --------------------------------------------------------
