@@ -1,8 +1,14 @@
 # Changelog
 
+## [1.1.3] — 2026-06-09
+
+First publicly released v1.1.x build (1.1.0–1.1.2 were tagged but their release builds did not publish). Same app as 1.1.2; this fixes the release pipeline.
+
+- **CI:** the release build failed at `cargo tauri build` with "Unable to find any Trunk configuration" — a newer `tauri-cli` runs `beforeBuildCommand` from a directory where `trunk` can't find `Trunk.toml`. The frontend is already built by the prior step, so `beforeBuildCommand` is now disabled during bundling.
+
 ## [1.1.2] — 2026-06-09
 
-First publicly released v1.1.x build (1.1.0 and 1.1.1 were tagged but not published). Bundles all of the v1.1.x features and fixes below.
+(Not published — release build failed; superseded by 1.1.3.) Bundles all of the v1.1.x features and fixes below.
 
 - **Fix:** prompter controls needed two clicks. The controls overlay re-rendered on every mouse move, recreating the buttons mid-click. The first click is no longer lost.
 - **Fix:** "resume where you left off" always restarted at 0%. Exiting the prompter zeroed the scroll position before the asynchronous save read it, so 0 was persisted. The real position is now captured on exit and offered on re-entry.

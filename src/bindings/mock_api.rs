@@ -70,7 +70,7 @@ impl MockApi {
                 files: HashMap::new(),
                 open_dialog_result: None,
                 save_dialog_result: None,
-                version: "1.1.2".to_string(),
+                version: "1.1.3".to_string(),
                 next_id: 1,
                 force_error: None,
                 fail_commands: Vec::new(),
