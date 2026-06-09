@@ -70,7 +70,7 @@ impl MockApi {
                 files: HashMap::new(),
                 open_dialog_result: None,
                 save_dialog_result: None,
-                version: "1.0.2".to_string(),
+                version: "1.1.0".to_string(),
                 next_id: 1,
                 force_error: None,
                 fail_commands: Vec::new(),
@@ -396,6 +396,12 @@ impl AppApi for MockApi {
         self.log("get_app_version");
         self.check_error()?;
         Ok(self.inner.borrow().version.clone())
+    }
+
+    async fn set_pip(&self, _enabled: bool) -> Result<(), String> {
+        self.log("set_pip");
+        self.check_error()?;
+        Ok(())
     }
 
     async fn check_for_update(&self) -> Result<Option<UpdateInfo>, String> {

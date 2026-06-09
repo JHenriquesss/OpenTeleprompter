@@ -16,8 +16,10 @@ impl ImportExportService {
         content: String,
         file_name: String,
     ) -> Result<Script, AppError> {
-        let title = file_name
-            .strip_suffix(".txt")
+        // Title = file name without its extension (any of .txt/.md/.pdf/.docx…).
+        let title = std::path::Path::new(&file_name)
+            .file_stem()
+            .and_then(|s| s.to_str())
             .unwrap_or(&file_name)
             .to_string();
         self.script_service.create(title, content)

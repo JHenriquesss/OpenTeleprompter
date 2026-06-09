@@ -80,6 +80,7 @@ pub fn run() {
             commands::import_export::read_text_file,
             commands::import_export::export_script_to_txt_file,
             commands::system::get_app_version,
+            commands::system::set_pip,
             commands::updater::check_for_update,
             commands::updater::install_update,
         ])
@@ -91,10 +92,41 @@ pub fn run() {
             // Close (X) hides to the tray instead of quitting; the app keeps
             // running. Full exit is via the tray's Quit item. Emit a one-time
             // hint so the frontend can tell the user it is still running.
+            // Only the main window hides to the tray on close. Secondary
+            // windows (e.g. the PiP window) must close normally.
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
-                let _ = window.emit("close-to-tray", ());
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    let _ = window.emit("close-to-tray", ());
+                }
+            }
+
+            // Drag-and-drop import, handled in the backend (typed window event)
+            // rather than via a JS listener. Supported files are imported through
+            // the real service; the frontend is told to refresh via an event.
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                use tauri::Manager;
+                let handler = window.state::<ImportExportCommandHandler>();
+                let mut imported = 0u32;
+                for path in paths {
+                    if !adapters::document::is_supported(path) {
+                        continue;
+                    }
+                    let name = path
+                        .file_name()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("imported")
+                        .to_string();
+                    if let Ok(text) = adapters::document::extract_text(path) {
+                        if handler.service.import_from_content(text, name).is_ok() {
+                            imported += 1;
+                        }
+                    }
+                }
+                if imported > 0 {
+                    let _ = window.emit("library-changed", imported);
+                }
             }
         })
         .run(tauri::generate_context!())

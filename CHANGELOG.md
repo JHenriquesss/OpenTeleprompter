@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0] — 2026-06-08
+
+New features.
+
+- **Import more formats.** The library Import button (and drag-and-drop) now accept **`.txt`, `.md`/`.markdown`, `.pdf`, and `.docx`** in addition to plain text. PDFs use text-layer extraction, DOCX reads the WordprocessingML body, and Markdown is reduced to clean prose (headings/emphasis/links/list markers stripped). New `adapters/document.rs` with unit tests.
+- **Drag-and-drop import.** Drop one or more supported files anywhere on the window to import them (opens the last in the editor). Uses Tauri's `tauri://drag-drop` event.
+- **Picture-in-picture prompter.** A `📌 PiP` button in the prompter opens a small, always-on-top floating window running the prompter for the current script — read while another app (call/recording) is focused. The PiP window boots via `?pip=<script_id>`; backend command `open_pip_window`.
+- **Finer speed control.** The prompter `◀◀` / `▶▶` buttons (and Up/Down keys) now step **0.05** instead of 0.25 for precise pacing.
+
 ## [1.0.2] — 2026-06-08
 
 **Critical fix: all UI actions were dead in the shipped 1.0.0/1.0.1 builds.**

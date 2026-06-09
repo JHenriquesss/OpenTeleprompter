@@ -63,6 +63,7 @@ pub fn PrompterView() -> impl IntoView {
     let (speed_error, set_speed_error) = create_signal::<Option<String>>(None);
     let (saved_state, set_saved_state) = create_signal::<Option<ScriptPlaybackStateData>>(None);
     let (show_resume_dialog, set_show_resume_dialog) = create_signal(false);
+    let (pinned, set_pinned) = create_signal(false);
 
     let hide_timer = Rc::new(Cell::new(None::<i32>));
     let interval_handle = Rc::new(Cell::new(None::<i32>));
@@ -669,6 +670,27 @@ pub fn PrompterView() -> impl IntoView {
                                     <span style="font-size: 11px; color: #666; min-width: 32px; text-align: right;">
                                         {move || format!("{:.1}x", playback.speed.get())}
                                     </span>
+                                    <button on:click={
+                                        let api = api.clone();
+                                        move |_: leptos::ev::MouseEvent| {
+                                            let next = !pinned.get();
+                                            set_pinned.set(next);
+                                            let api = api.clone();
+                                            spawn_local(async move {
+                                                let _ = api.set_pip(next).await;
+                                            });
+                                        }
+                                    }
+                                        title="Pin as a small always-on-top floating window"
+                                        style=move || format!(
+                                            "padding: 4px 8px; border: 1px solid {}; border-radius: 4px; \
+                                             background: {}; color: {}; cursor: pointer; font-size: 11px;",
+                                            if pinned.get() { "#e94560" } else { "#555" },
+                                            if pinned.get() { "rgba(233,69,96,0.25)" } else { "transparent" },
+                                            if pinned.get() { "#e94560" } else { "#ccc" },
+                                        )>
+                                        {move || if pinned.get() { "📌 Unpin" } else { "📌 PiP" }}
+                                    </button>
                                     <button on:click=move |_| toggle_fullscreen()
                                         style="padding: 4px 8px; border: 1px solid #555; border-radius: 4px;
                                                background: transparent; color: #ccc; cursor: pointer; font-size: 11px;">

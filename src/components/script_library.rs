@@ -212,6 +212,13 @@ pub fn ScriptLibrary() -> impl IntoView {
                 </div>
             </div>
 
+            <div style="
+                font-size: 12px; color: var(--text-muted2); margin-bottom: 12px;
+                padding: 8px 12px; border: 1px dashed var(--border-light); border-radius: 8px;
+            ">
+                "📎 Drag & drop .txt, .md, .pdf or .docx files here to import them."
+            </div>
+
             <input
                 node_ref=search_ref
                 on:keydown=on_search

@@ -26,11 +26,14 @@ impl PlaybackState {
     }
 
     pub fn increase_speed(&self) {
-        self.speed.update(|s| *s = (*s + 0.25).min(10.0));
+        // Fine 0.05 steps for precise control; round to 2 dp to avoid float drift.
+        self.speed
+            .update(|s| *s = (((*s + 0.05) * 100.0).round() / 100.0).min(10.0));
     }
 
     pub fn decrease_speed(&self) {
-        self.speed.update(|s| *s = (*s - 0.25).max(0.25));
+        self.speed
+            .update(|s| *s = (((*s - 0.05) * 100.0).round() / 100.0).max(0.25));
     }
 
     pub fn set_speed(&self, val: f64) {
@@ -91,14 +94,14 @@ mod tests {
     fn test_increase_speed() {
         let pb = PlaybackState::new();
         pb.increase_speed();
-        assert_eq!(pb.speed.get(), 1.25);
+        assert_eq!(pb.speed.get(), 1.05);
     }
 
     #[wasm_bindgen_test]
     fn test_decrease_speed() {
         let pb = PlaybackState::new();
         pb.decrease_speed();
-        assert_eq!(pb.speed.get(), 0.75);
+        assert_eq!(pb.speed.get(), 0.95);
     }
 
     #[wasm_bindgen_test]

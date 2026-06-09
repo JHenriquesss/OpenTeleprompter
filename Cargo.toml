@@ -4,7 +4,7 @@ resolver = "2"
 
 [package]
 name = "openprompter-rs"
-version = "1.0.2"
+version = "1.1.0"
 edition = "2021"
 
 [lib]
@@ -19,7 +19,7 @@ wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [
     "Document", "Window", "Element", "HtmlElement", "KeyboardEvent",
-    "CssStyleDeclaration", "FocusEvent", "MouseEvent", "console"
+    "CssStyleDeclaration", "FocusEvent", "MouseEvent", "console", "Location"
 ] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

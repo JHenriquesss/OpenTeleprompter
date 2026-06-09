@@ -4,14 +4,47 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
-    async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+    // `catch` so a command that returns `Err` (a rejected JS promise) becomes a
+    // Rust `Err` instead of silently aborting the spawned task with no feedback
+    // (which made failed imports look like "nothing happened").
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"], catch)]
+    async fn invoke(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
+}
+
+/// Turn a rejected-invoke `JsValue` into a readable error string.
+fn js_err_to_string(e: JsValue) -> String {
+    if let Some(s) = e.as_string() {
+        return s;
+    }
+    js_sys::JSON::stringify(&e)
+        .ok()
+        .and_then(|s| s.as_string())
+        .unwrap_or_else(|| "Unknown backend error".to_string())
 }
 
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name = once)]
     fn tauri_event_once(event: &str, handler: &JsValue);
+
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name = listen)]
+    fn tauri_event_listen(event: &str, handler: &JsValue);
+}
+
+/// Subscribe to the backend `library-changed` event, emitted after a
+/// drag-and-drop import completes in the Rust window-event handler. The callback
+/// receives the number of scripts imported. (Drag-drop is handled in the backend
+/// for reliability; this just tells the UI to refresh.)
+pub fn on_library_changed<F: FnMut(u32) + 'static>(mut cb: F) {
+    let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |event: JsValue| {
+        let n = js_sys::Reflect::get(&event, &JsValue::from_str("payload"))
+            .ok()
+            .and_then(|p| p.as_f64())
+            .unwrap_or(0.0) as u32;
+        cb(n);
+    }) as Box<dyn FnMut(JsValue)>);
+    tauri_event_listen("library-changed", closure.as_ref().unchecked_ref());
+    closure.forget();
 }
 
 /// Subscribe to the backend `close-to-tray` event **once** — Tauri's
@@ -33,7 +66,7 @@ where
 {
     let args_json =
         serde_wasm_bindgen::to_value(&args).map_err(|e| format!("Serialize error: {}", e))?;
-    let result = invoke(cmd, args_json).await;
+    let result = invoke(cmd, args_json).await.map_err(js_err_to_string)?;
     serde_wasm_bindgen::from_value(result).map_err(|e| format!("Invoke error: {}", e))
 }
 
@@ -43,7 +76,7 @@ where
 {
     let args_json =
         serde_wasm_bindgen::to_value(&args).map_err(|e| format!("Serialize error: {}", e))?;
-    invoke(cmd, args_json).await;
+    invoke(cmd, args_json).await.map_err(js_err_to_string)?;
     Ok(())
 }
 
@@ -144,7 +177,8 @@ pub async fn export_script_to_txt_file(id: &str, path: &str) -> Result<(), Strin
 pub async fn import_script_from_txt(content: &str, file_name: &str) -> Result<ScriptData, String> {
     invoke_tauri(
         "import_script_from_txt",
-        serde_json::json!({ "content": content, "file_name": file_name }),
+        // Tauri v2 expects camelCase arg keys; `file_name` -> `fileName`.
+        serde_json::json!({ "content": content, "fileName": file_name }),
     )
     .await
 }
@@ -156,6 +190,11 @@ pub async fn export_script_to_txt(id: &str) -> Result<(String, String), String> 
 
 pub async fn get_app_version() -> Result<String, String> {
     invoke_tauri("get_app_version", serde_json::json!({})).await
+}
+
+/// Pin/unpin the window as a small always-on-top picture-in-picture float.
+pub async fn set_pip(enabled: bool) -> Result<(), String> {
+    invoke_tauri_unit("set_pip", serde_json::json!({ "enabled": enabled })).await
 }
 
 /// Metadata about an available update, returned by the `check_for_update`

@@ -18,6 +18,10 @@ pub fn AppShell() -> impl IntoView {
     let api = use_context::<ApiCtx>().expect("AppApi not provided");
     let toast = use_context::<ToastState>().expect("ToastState not provided");
 
+    // Clone for the library-changed (drag-drop import) effect; `toast` is moved
+    // into the tray effect below.
+    let drop_toast = toast.clone();
+
     let current_view = move || app_state.view.get();
 
     create_effect(move |_| {
@@ -36,6 +40,17 @@ pub fn AppShell() -> impl IntoView {
             toast.add_info(
                 "OpenPrompter is still running in the system tray. Use the tray icon to quit.",
             );
+        });
+    });
+
+    // Drag-and-drop import is handled in the Rust backend (window DragDrop
+    // event); when it finishes it emits `library-changed`. Refresh the library
+    // and notify the user.
+    create_effect(move |_| {
+        let toast = drop_toast.clone();
+        crate::bindings::tauri_api::on_library_changed(move |n| {
+            toast.add_success(&format!("Imported {} file(s)", n));
+            app_state.refresh_library();
         });
     });
 

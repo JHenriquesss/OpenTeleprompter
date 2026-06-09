@@ -1,6 +1,6 @@
 [package]
 name = "openprompter-rs-tauri"
-version = "1.0.2"
+version = "1.1.0"
 edition = "2021"
 
 [lib]
@@ -21,6 +21,11 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "1"
+# Document import (pdf / docx / markdown -> plain text)
+pdf-extract = "0.7"
+zip = "2"
+quick-xml = "0.36"
+regex = "1"
 
 [dev-dependencies]
 rusqlite = { version = "0.31", features = ["bundled"] }
