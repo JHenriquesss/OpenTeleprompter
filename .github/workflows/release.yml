@@ -67,7 +67,10 @@ jobs:
         run: trunk build
 
       - name: Build Windows installer
-        run: cargo tauri build
+        # Frontend already built by the prior `trunk build` step. Disable the
+        # config's beforeBuildCommand: newer tauri-cli runs it from a cwd where
+        # trunk can't find Trunk.toml ("Unable to find any Trunk configuration").
+        run: cargo tauri build --config '{"build":{"beforeBuildCommand":""}}'
         env:
           # Updater signing key. Empty when the secret is unset; only consumed
           # when bundle.createUpdaterArtifacts is enabled (see docs/release.md).
@@ -188,7 +191,10 @@ jobs:
         run: trunk build
 
       - name: Build Linux bundle
-        run: cargo tauri build
+        # Frontend already built by the prior `trunk build` step. Disable the
+        # config's beforeBuildCommand: newer tauri-cli runs it from a cwd where
+        # trunk can't find Trunk.toml ("Unable to find any Trunk configuration").
+        run: cargo tauri build --config '{"build":{"beforeBuildCommand":""}}'
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -258,7 +264,10 @@ jobs:
       - name: Frontend WASM build
         run: trunk build
       - name: Build macOS bundle
-        run: cargo tauri build
+        # Frontend already built by the prior `trunk build` step. Disable the
+        # config's beforeBuildCommand: newer tauri-cli runs it from a cwd where
+        # trunk can't find Trunk.toml ("Unable to find any Trunk configuration").
+        run: cargo tauri build --config '{"build":{"beforeBuildCommand":""}}'
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -327,7 +336,10 @@ jobs:
       - name: Frontend WASM build
         run: trunk build
       - name: Build macOS bundle
-        run: cargo tauri build
+        # Frontend already built by the prior `trunk build` step. Disable the
+        # config's beforeBuildCommand: newer tauri-cli runs it from a cwd where
+        # trunk can't find Trunk.toml ("Unable to find any Trunk configuration").
+        run: cargo tauri build --config '{"build":{"beforeBuildCommand":""}}'
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
