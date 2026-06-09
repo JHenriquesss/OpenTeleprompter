@@ -197,4 +197,19 @@ Banner auto-checks on mount; Install/Dismiss via `click_by_aria`/`click_text`.
 | Frontend WASM tests | 67 (41 logic/state + 26 component integration: 11 Phase 11 + 9 Phase 12 + 6 Phase 14) |
 | Architecture assertions | 4 (animation, persistence, toast position, toast timer) |
 | Manual fallback items | visual playback smoothness, theme-in-window, real OS dialogs |
-| **Total tests** | **85 (18 backend + 67 WASM)** |
+| **Total tests** | **85 (18 backend + 67 WASM)** — pre-v1.1.x; see additions below |
+
+## v1.1.x additions (Phase 21/22)
+
+Backend (`cargo test -p openprompter-rs-tauri`):
+- `src-tauri/src/adapters/document.rs` unit tests — markdown strip, docx XML extract, unsupported-ext error, `is_supported`.
+- `src-tauri/tests/document_import_tests.rs` — real-file `extract_text` on actual `.txt`/`.md`/`.docx` written to temp.
+- `src-tauri/tests/full_flow_tests.rs` — REAL service stack (real SQLite + migrations): script CRUD, search, duplicate, import round-trip, settings default/update/reset (guards the **first-run deadlock**), playback save/load/clear, FK cascade. Exposed `domain`/`persistence`/`services` as `pub`.
+
+Frontend WASM (`wasm-pack test --headless --chrome`, 69 pass):
+- `scroll_delta_is_60px_per_second_at_1x` — guards the **prompter-freeze** scale (`scroll_delta_px`).
+- `exiting_prompter_saves_current_scroll_not_zero` — mounts prompter, scrolls 1234px, clicks Exit, asserts MockApi persisted 1234 (guards **resume-to-0%**). Added `MockApi::saved_playback`.
+
+Real-app integration (manual, Windows): `e2e/cdp/regression.mjs` drives the built binary over WebView2 CDP — real IPC (dead-buttons), playback save/load round-trip, PiP pin/unpin window resize (560↔1280), control-button stability across mousemove (two-clicks). See `e2e/cdp/README.md`.
+
+`e2e/` (tauri-driver + WebdriverIO) exists but is **non-blocking** (headless WebKitGTK won't render the WASM page on CI).

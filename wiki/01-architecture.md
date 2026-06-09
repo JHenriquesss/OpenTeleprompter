@@ -278,3 +278,13 @@ Two repos after privacy incident (2026-06-07):
 - **Hide-to-tray:** `lib.rs` `.on_window_event` intercepts `CloseRequested` → `api.prevent_close()` + `window.hide()` + `window.emit("close-to-tray", ())`. App keeps running; **Quit (tray) is the only full exit** (`app.exit(0)`).
 - **One-time hint:** frontend `AppShell` effect calls `tauri_api::on_close_to_tray_once` (wraps Tauri `event.once`) → info toast at most once per app run.
 - Tray/window runtime behavior is **manual-verified** (GUI, not unit-testable); `tray_action` is the automated part. [[03-phases.md#phase-16-system-tray-icon]]
+
+## IPC bridge, document import, drag-drop, PiP (Phase 21/22)
+
+- **Frontend↔backend bridge:** the WASM frontend calls `window.__TAURI__.core.invoke` → requires **`app.withGlobalTauri: true`** (else global absent, every call throws — the "dead buttons" bug). The `invoke` extern uses `#[wasm_bindgen(catch)]` → `Result<JsValue,JsValue>` so backend `Err` becomes a Rust `Err`/toast instead of a silent task abort. **IPC arg keys are camelCase** (`fileName`, `scriptId`, `scrollOffsetPx`); Tauri v2 maps them to snake_case params.
+- **Document import:** `adapters/document.rs::extract_text(path)` → plain text by extension: `.txt` raw, `.md` regex strip, `.pdf` `pdf-extract`, `.docx` `zip`+`quick-xml` over `word/document.xml`. Used by the `read_text_file` command and (in Rust) by drag-drop.
+- **Dialogs:** `adapters/dialog.rs` uses the **non-blocking** `pick_file`/`save_file` callback + `std::sync::mpsc`; commands are `async` (run off the main thread). `blocking_*` deadlocks (sync command runs on main thread; async blocks the executor).
+- **Drag-drop:** handled in `lib.rs` `.on_window_event` `WindowEvent::DragDrop` (typed, reliable) → import via `ImportExportService` → `emit("library-changed")` → frontend `on_library_changed` refresh. A JS `tauri://drag-drop` listener was tried and didn't fire.
+- **Picture-in-picture:** `commands::system::set_pip(enabled)` resizes the **main** window (560×320 + `always_on_top` ↔ 1280×800 centered). A runtime second `WebviewWindow` loaded `about:blank` (bundled asset not served for runtime windows). Prompter `on_cleanup` auto-unpins on exit; `CloseRequested` hides-to-tray only for the `main` window.
+- **Prompter scroll:** `prompter/engine.rs::scroll_delta_px(speed,dt)=speed*0.06` (60 px/s per 1×), kept in sync with `estimated_remaining` (`px/s == speed*60`). Speed nudge buttons step 0.05.
+- **Resume:** `scroll_y` resets on prompter **entry**; exit captures position **synchronously** before the async `save_playback_state` (the bug read it after a synchronous reset → saved 0).

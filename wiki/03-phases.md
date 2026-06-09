@@ -788,3 +788,22 @@ After containment, created a new clean public repository:
 - **Checksum names normalized** (spaces → dots) to match GitHub-served asset names → `sha256sum --check` works.
 - Version 1.0.0 → 1.0.1; CHANGELOG `[1.0.1]`.
 - **Verified on v1.0.1:** win + linux + mac-arm + `publish-updater-manifest` all SUCCESS; release `prerelease=false` automatically; endpoint serves v1.0.1 (3 platforms); checksums dot-named. `build-macos-intel` still queue-stalled but **non-blocking** (Intel-mac DMG not yet shipped). must-exist 6/6.
+
+## Phase 21: v1.1.0 Features (multi-format import, drag-drop, PiP, fine speed)
+
+**Scope:** the three user-requested features. **Merged:** PR #15 (`3d1abef`) + docs PR #16 (`d5a5283`).
+
+- **Multi-format import:** `src-tauri/src/adapters/document.rs` → `extract_text(path)` dispatches by extension: `.txt` raw, `.md` light regex strip, `.pdf` via `pdf-extract`, `.docx` via `zip`+`quick-xml` over `word/document.xml`. New deps: `pdf-extract`, `zip`, `quick-xml`, `regex`. `read_text_file` routes through it; open-dialog filter widened; import title = `file_stem`.
+- **Drag-and-drop:** backend `WindowEvent::DragDrop` imports via `ImportExportService` → `emit("library-changed")` → frontend `on_library_changed` refresh. Library shows a drop hint.
+- **Picture-in-picture:** `set_pip(enabled)` pins the main window small + always-on-top (📌 button; second window loaded `about:blank` — see [[04-decisions.md]]). Auto-unpin on prompter `on_cleanup`.
+- **Fine speed:** `PlaybackState::increase/decrease_speed` step `0.05` (rounded 2dp).
+- Version 1.0.2→1.1.0 (1.0.2 was built locally, never publicly released).
+
+## Phase 22: v1.1.x Critical Fixes (made the app actually usable)
+
+**Scope:** the shipped 1.0.x was non-functional; fix it. **Merged:** PR #14 (`6f7c54e`), #17 (`6c24f8a`), `fix/button-responsiveness` (pending).
+
+- **Fixes:** dead buttons (`withGlobalTauri`), silent failures (`invoke` `catch`), import (camelCase `fileName` + non-blocking dialog), freeze (scroll `*0.06`), settings deadlock (drop lock before seed), resume (save sync on exit + reset on entry), two-clicks (`mousemove` guard), PiP (pin-main-window + auto-unpin + main-only hide-to-tray). Full list in [[06-open-threads.md]] → Resolved → v1.1.x.
+- **Tests added:** `tests/full_flow_tests.rs`, `tests/document_import_tests.rs`, `scroll_delta_px` + `exiting_prompter_saves_current_scroll_not_zero` WASM tests, manual WebView2-CDP suite `e2e/cdp/regression.mjs`.
+- **Verification method:** drove the real built app over the WebView2 DevTools Protocol (UI Automation can't see inside WebView2). Confirmed PiP 1280↔560, exit-unpin, markdown import round-trip, button stability.
+- **Release state:** v1.1.0/v1.1.1 tags pushed then runs cancelled (bugs caught pre-publish) → orphaned tags; next clean tag is the real release.
