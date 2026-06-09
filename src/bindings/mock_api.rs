@@ -190,6 +190,12 @@ impl MockApi {
         self.inner.borrow().playback.len()
     }
 
+    /// The most recently saved/stored playback state for a script (for asserting
+    /// that exit/pause persisted the real scroll position, not 0).
+    pub fn saved_playback(&self, script_id: &str) -> Option<ScriptPlaybackStateData> {
+        self.inner.borrow().playback.get(script_id).cloned()
+    }
+
     // ---- helpers --------------------------------------------------------
 
     fn log(&self, method: &str) {
