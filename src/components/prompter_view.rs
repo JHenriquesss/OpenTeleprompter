@@ -433,7 +433,15 @@ pub fn PrompterView() -> impl IntoView {
     };
 
     view! {
-        <div style={container_style} on:mousemove=move |_| set_show_controls.set(true)>
+        <div style={container_style} on:mousemove=move |_| {
+            // Only write on the hidden->shown transition. Writing on every
+            // mousemove re-rendered the controls overlay constantly, which
+            // recreated the buttons mid-click and ate the first click ("needs
+            // two clicks").
+            if !show_controls.get_untracked() {
+                set_show_controls.set(true);
+            }
+        }>
 
             {move || {
                 if ui.reading_guide.get() {
