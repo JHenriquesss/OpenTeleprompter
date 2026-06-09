@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.1] — 2026-06-09
+
+- **Fix:** exiting the prompter while pinned (picture-in-picture) left the window stuck small and always-on-top. The window now auto-unpins/restores whenever you leave the prompter (Exit button, Esc, or any view change), not only via the Unpin button.
+
 ## [1.1.0] — 2026-06-08
 
 New features.

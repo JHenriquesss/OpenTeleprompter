@@ -65,6 +65,21 @@ pub fn PrompterView() -> impl IntoView {
     let (show_resume_dialog, set_show_resume_dialog) = create_signal(false);
     let (pinned, set_pinned) = create_signal(false);
 
+    // Leaving the prompter (Exit button, Esc, or any view change) must restore
+    // the window if it was pinned as a PiP float — otherwise the library is left
+    // stuck in the tiny always-on-top window.
+    {
+        let api = api.clone();
+        on_cleanup(move || {
+            if pinned.get_untracked() {
+                let api = api.clone();
+                spawn_local(async move {
+                    let _ = api.set_pip(false).await;
+                });
+            }
+        });
+    }
+
     let hide_timer = Rc::new(Cell::new(None::<i32>));
     let interval_handle = Rc::new(Cell::new(None::<i32>));
     let save_interval = Rc::new(Cell::new(None::<i32>));
