@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2] — 2026-06-09
+
+First publicly released v1.1.x build (1.1.0 and 1.1.1 were tagged but not published). Bundles all of the v1.1.x features and fixes below.
+
+- **Fix:** prompter controls needed two clicks. The controls overlay re-rendered on every mouse move, recreating the buttons mid-click. The first click is no longer lost.
+- **Fix:** "resume where you left off" always restarted at 0%. Exiting the prompter zeroed the scroll position before the asynchronous save read it, so 0 was persisted. The real position is now captured on exit and offered on re-entry.
+- Added regression tests (`exiting_prompter_saves_current_scroll_not_zero`, `scroll_delta_px`) and a real-app WebView2-CDP regression suite (`e2e/cdp/`).
+
 ## [1.1.1] — 2026-06-09
 
 - **Fix:** exiting the prompter while pinned (picture-in-picture) left the window stuck small and always-on-top. The window now auto-unpins/restores whenever you leave the prompter (Exit button, Esc, or any view change), not only via the Unpin button.
